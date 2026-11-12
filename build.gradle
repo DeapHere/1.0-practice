@@ -1,0 +1,111 @@
+plugins {
+	id 'fabric-loom' version '1.18-SNAPSHOT'
+	id 'ploceus' version '1.18-SNAPSHOT'
+}
+
+base {
+	archivesName = project.archives_base_name
+}
+version = project.version
+group = project.maven_group
+
+sourceSets {
+	// development only: drives a practice attempt and sets off beds next to the dragon (./gradlew runSelfTest)
+	selftest {
+		compileClasspath += main.compileClasspath + main.output
+		runtimeClasspath += main.runtimeClasspath + main.output
+	}
+}
+
+loom {
+	// 1.0 has no server in the version manifest, and the mod is client only
+	clientOnlyMinecraftJar()
+
+	mods {
+		endpractice {
+			sourceSet sourceSets.main
+		}
+		"endpractice-selftest" {
+			sourceSet sourceSets.selftest
+		}
+	}
+
+	runs {
+		selfTest {
+			client()
+			name = 'Self test'
+			source sourceSets.selftest
+			runDir 'run/selftest'
+			vmArg "-Dendpractice.stress=${project.findProperty('stress') ?: '0'}"
+			vmArg "-Dendpractice.endgame=${project.findProperty('endgame') ?: '0'}"
+			vmArg "-Dendpractice.outline=${project.findProperty('outline') ?: '0'}"
+			vmArg "-Dendpractice.blaze=${project.findProperty('blaze') ?: '0'}"
+			vmArg "-Dendpractice.screens=${project.findProperty('screens') ?: '0'}"
+			vmArg "-Dendpractice.crystals=${project.findProperty('crystals') ?: '0'}"
+			vmArg "-Dendpractice.randomcrystals=${project.findProperty('randomcrystals') ?: '0'}"
+		}
+	}
+}
+
+ploceus {
+	// the 1.0 instance (MultiMC/Prism "Intermediary Mappings" component) uses calamus-intermediary gen1
+	setIntermediaryGeneration(1)
+	clientOnlyMappings()
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	// not every version has exception patches (1.2.4 has none): leave raven_build empty for those
+	if (project.raven_build) {
+		exceptions ploceus.raven(project.raven_build)
+	}
+	// not every version has signature patches (1.2.5 has none): leave sparrow_build empty for those
+	if (project.sparrow_build) {
+		signatures ploceus.sparrow(project.sparrow_build)
+	}
+	nests ploceus.nests(project.nests_build)
+	mappings ploceus.featherMappings(project.feather_build)
+
+	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	// development only: other mods' jars dropped in devmods/ run alongside in the dev client
+	modRuntimeOnly fileTree(dir: 'devmods', include: '*.jar')
+}
+
+processResources {
+	inputs.property 'version', version
+	filesMatching('fabric.mod.json') {
+		expand 'version': version
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.encoding = 'UTF-8'
+	it.options.release = 8
+}
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_1_8
+	targetCompatibility = JavaVersion.VERSION_1_8
+	withSourcesJar()
+}
+
+jar {
+	from('LICENSE') {
+		rename { "${it}_${base.archivesName.get()}" }
+	}
+}
+
+// development only: the self test as a mod jar in intermediary names, to run in a real instance (never released)
+tasks.register('selftestJar', Jar) {
+	from sourceSets.selftest.output
+	archiveClassifier = 'selftest-dev'
+}
+tasks.register('remapSelftestJar', net.fabricmc.loom.task.RemapJarTask) {
+	dependsOn tasks.selftestJar
+	inputFile = tasks.selftestJar.archiveFile
+	archiveClassifier = 'selftest'
+	addNestedDependencies = false
+}
+tasks.register('printRuntimeCp') {
+	doLast { configurations.runtimeClasspath.files.each { println "CP " + it } }
+}
