@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "endpractice",
+  "version": "${version}",
+  "name": "OldschoolPrac",
+  "description": "Speedrun practice for Minecraft 1.0: the End fight with a bed report, endgame (tower build, stronghold, dragon) with splits and a pit planner, crystal aim trainers, an eye throw trainer, blaze spawner practice, a kit editor, stats and singleplayer commands with a spectator mode.",
+  "authors": ["DeapHere"],
+  "license": "MIT",
+  "environment": "client",
+  "mixins": ["endpractice.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.18.1",
+    "minecraft": ">=1.0.0 <=1.2.5"
+  }
+}

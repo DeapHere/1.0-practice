@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "endpractice-selftest",
+  "version": "1",
+  "name": "OldschoolPrac self test",
+  "description": "Development only: starts an attempt and sets off beds around the dragon's head to check the bed report.",
+  "environment": "client",
+  "mixins": ["endpractice-selftest.mixins.json"],
+  "depends": {"endpractice": "*"}
+}

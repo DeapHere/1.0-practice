@@ -40,6 +40,7 @@ loom {
 			vmArg "-Dendpractice.endgame=${project.findProperty('endgame') ?: '0'}"
 			vmArg "-Dendpractice.outline=${project.findProperty('outline') ?: '0'}"
 			vmArg "-Dendpractice.blaze=${project.findProperty('blaze') ?: '0'}"
+			vmArg "-Dendpractice.eyes=${project.findProperty('eyes') ?: '0'}"
 			vmArg "-Dendpractice.screens=${project.findProperty('screens') ?: '0'}"
 			vmArg "-Dendpractice.crystals=${project.findProperty('crystals') ?: '0'}"
 			vmArg "-Dendpractice.randomcrystals=${project.findProperty('randomcrystals') ?: '0'}"

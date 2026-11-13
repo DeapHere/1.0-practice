@@ -1,167 +1,210 @@
 # OldschoolPrac
 
-Speedrun practice for the oldest version people run, Minecraft 1.0. The dragon fight drops you into a fresh End with your kit, times the fight and tells you after every bed how close it was to a perfect one. Endgame practice covers the tower build and the stronghold too, split by split, with a pit planner. There's also a crystal aim trainer, open and enclosed blaze spawners, PBs and stats, and a kit editor.
+A practice mod for speedrunning Minecraft 1.0, the oldest version people run. It covers the stuff that's hard to practice in real runs:
 
-Practice only. It is not meant for runs and isn't submitted for approval.
+- **End fight**: drops you into a fresh End with your kit, times the fight, and tells you after every bed how close it was to a perfect one
+- **Endgame**: the tower build, stronghold and dragon, with splits and a pit planner that picks your pit spot for you
+- **Trainers**: crystal shooting (a full island, or one crystal at a time with a streak) and eye throws, where you find the stronghold and see how close your guess was
+- **Blaze fight**: real open and enclosed fortress spawners, with your spawner kit
+- **PBs, stats and a kit editor**, since 1.0 can't switch game modes to fix your inventory
+- **Singleplayer commands**: chat works in singleplayer, with /gamemode (survival, creative and a spectator mode 1.0 never had), /tp, /time and more
 
-Fabric mod for Minecraft 1.0 (Fabric Loader 0.18.1 or newer, Ornithe intermediary). Built against 1.0; the metadata allows 1.0 to 1.2.5 but only 1.0 has been tested.
+It's a Fabric mod (Fabric Loader 0.18.1 or newer, Ornithe intermediary). It's built and tested on 1.0. The metadata allows up to 1.2.5, but I haven't tried those.
 
-## Use
+## Getting started
 
-1. Put `oldschoolprac-<version>.jar` in the instance's `.minecraft/mods` folder.
-2. On the title screen click the ender pearl button left of Singleplayer and pick a mode, or press **P**. You land on the obsidian platform in a new End, with full health, full hunger and the kit.
-3. Fight. **P** restarts at any time while practicing. **K** saves your current inventory as the kit for every later attempt.
+1. Drop `oldschoolprac-<version>.jar` into your instance's `.minecraft/mods` folder.
+2. On the title screen, click the ender pearl button next to Singleplayer and pick a mode.
+3. Each mode also has a hotkey you can press on the title screen if you prefer (P for the End fight, and the rest are below). The same key restarts the mode while you're in it. Every hotkey can be changed or set to NONE under Settings, Hotkeys.
 
-Each attempt is a new world with a random seed, so the island and towers are different every time. End fight worlds have structures turned off: it makes no difference in the End, and it avoids a vanilla 1.0 crash in the overworld you respawn in after dying. The practice world is the `EndPractice` save and is replaced on each attempt. You go in through vanilla's own End portal code, the same way as stepping into the portal in a run.
+Every attempt is a brand new world with a random seed, so you never get the same island, tower or fortress twice. The practice worlds overwrite themselves each attempt, so they won't fill up your saves.
 
-## Endgame practice
+## End fight
 
-Three more modes, in the practice menu or with a key on the title screen (the same key restarts while in one of them):
+Press **P** (or Dragon fight in the menu). You spawn on the obsidian platform with full health, full hunger and your kit, and you go in through the game's own End portal code, so it's the same as jumping in during a run. **P** restarts any time. **K** pressed twice saves your current inventory as the kit for next time.
 
-- **O**, full endgame: tower build, portal room, enter End, dragon
-- **I**, tower build only
-- **L**, stronghold to dragon: starts with the stronghold kit (14 eyes of ender) and goes portal room, enter End, dragon
+The HUD in the top left (hidden with F3) shows the timer, dragon health, crystals left, your PB and your last bed.
 
-Each attempt is a new world with structures on, so the stronghold is the seed's own. You start on a flat plains or desert spot with no ocean, river or lake nearby, a random 128 to 384 blocks from a stronghold, any direction (it becomes the spawn point), and only where an eye of ender thrown there or anywhere 205 blocks around (where the pit goes) leads to that stronghold (on the ground and from the top of the tower). 1.0's nearest stronghold search has a bug that can send eyes to one over 600 blocks away, with the tower kit: nether bricks, a stack of leaves, nether brick fences, a boat, a fence gate, cactus, a pressure plate and a water bucket in the hotbar, and two more stacks of leaves, stone tools, 16 steak, 30 oak planks, string, feathers, flint, sticks, 7 blaze rods, 21 wool, a crafting table, flint and steel, 3 ladders and 3 dirt in the inventory. The stronghold kit drops the tower blocks for 16 cobblestone and a stack of leaves, and adds 14 eyes and a spare pearl.
+After each bed near the dragon, chat tells you how it went:
 
-- **Tower build** ends when you die (death reset in the pit). In tower-only mode that's the end of the attempt. A death before you've been 20 blocks above the ground doesn't count.
-- **Portal room** starts when you respawn and ends when you're next to an End portal frame. Deaths after that first one (more death resets in the pit) don't stop the run.
-- **Enter End** ends when you arrive in the End, and **Dragon** when it dies. The End has the same HUD and bed report as the End fight practice.
+- `Bed 47/81, 3.2 from head: 3.0 behind, 1.0 below`: the damage out of 81 (a perfect bed), and where the bed was compared to the head, in the dragon's own directions
+- `3 ticks late (0.15 s): the perfect tick does up to 63 (+16)`: how early or late you clicked, and what the best tick would have done. Nailing it says `Perfect tick`, and 1 tick off says `Good`
+- whether it only hit the body, tail or wings (those only take a quarter of the damage, plus 1)
+- whether the dragon was still invulnerable from your last hit, and for how long
 
-The tower build starts at 8:30 in-game time, with a countdown to night (11:00) on the HUD that turns into +overtime until your death reset; the death reset then says how far before or after night it was. Stronghold attempts start as the night ends. Each mode keeps its own PBs, so stronghold-only times never count against full runs: the HUD shows the split you're on with its PB (a finished split stays for 10 seconds, and its time is in chat), and a whole attempt that kills the dragon has one shown next to the timer. Every finished split is saved in `config/endpractice-splits.txt`.
+When the dragon dies you get the time, whether it's a PB, how many beds you used, your average (all time and last 10) and your completion rate. Attempts you die in, leave or reset count against the completion rate.
 
-Through the night (from night or the first enderman until the night is over or the first eye of ender is thrown) the HUD shows the endermen killed and the pearls they dropped, with the share of endermen that dropped one.
+### How bed damage works in 1.0
 
-**Enderman tracker** (off by default, in the Lab; it only turns on with Pearl luck set to vanilla, so the saved drop rates are real, and Pearl luck is in the Lab too): for full endgame runs (**O**), it also counts every enderman that spawns in the loaded overworld, and separately the ones on the surface: under the open sky (nothing above them but air, leaves, plants, snow or vines; the rest are in caves) and within the surface range of you at some point, 87 blocks by default since that's as far as 1.0 draws an enderman (they spawn up to about 128 blocks out). The range is a setting; 0 counts surface endermen anywhere in the loaded world. The HUD shows `Spawned 7 (3 surface)` with the averages through the night. The run's endermen spawned, surface, killed, dropped and pearls are saved once the night is over (the last tick monsters can spawn on the surface: sky light above 7, which is 22811 in clear weather, about 19:00 into a run; later in rain, and never while it's thundering) or the first eye of ender is thrown, whichever comes first, and chat shows them with the averages over every saved run; after that the endermen lines leave the HUD. Runs reset before then aren't saved. **Enderman outlines** (also in the Lab) draws every enderman's hitbox as a pink box that shows through blocks, so they're easy to spot; like vanilla, endermen are only drawn within about 87 blocks. **Enderman aggro dot** puts a red dot above every enderman that's after you (the same moment vanilla opens its mouth), also through blocks. **Spawn overlay** (Lab) shows how 1.0 spawns monsters, read from the real spawner, in the top right: `Cap 80/79` (red when full), `Despawned 6` since the last spawn, and `Spawned 8, 12s ago` for the last burst (`+E` when it had an enderman). Every tick the loaded monsters are at or under the cap (70 x 289 chunks / 256 = 79, counting every loaded monster, caves included), the spawner tries every chunk around you at once, so one tick can spawn a dozen and go over the cap. Then nothing spawns until monsters despawn (over 128 blocks away straight away, over 32 blocks now and then) or die, and the next open tick spawns another burst. **Flush overlay** (Lab) shows `Flushed 32/83 39%` in the top right after you respawn on the tower: how many of the monsters loaded while you were dead despawned in the 2 seconds after (they were over 128 blocks from the tower), with the endermen in pink (`3/7 E`). It stays until the next respawn. **Enderman stats** in the Lab shows the averages, the range and the last runs. The runs are in `config/endpractice-endermen.txt` (`time,spawned,killed,dropped,pearls,surface`); delete it to start the averages over. **K** pressed twice saves your inventory as the tower kit, or as the stronghold kit in stronghold mode.
+A bed is a power 5 explosion, which gets doubled to 10 for hurting entities, so it reaches 10 blocks. Each dragon part in range takes `(q*q + q) / 2 * 80 + 1`, where `q = (1 - distance / 10) * exposure`. Distance is to the bottom middle of the part's hitbox, and exposure is how much of the hitbox the explosion can see.
+
+- The head is a 3x3x3 box whose bottom middle sits 5.5 blocks in front of the dragon. A bed right there does 81.
+- Every other part takes a quarter of that plus 1, so 21 at most.
+- After a hit the dragon is invulnerable for 10 ticks, and a hit during that only counts for whatever it does above the last one.
+
+It's the same maths as 1.7.10. The difference is that 1.7 draws the dragon a few ticks behind where it really is, while in 1.0 the hitbox is right where you see it.
+
+## Endgame
+
+Three modes, all in the menu:
+
+- **O**: full endgame, from tower build to portal room to entering the End to the dragon
+- **I**: just the tower build
+- **L**: stronghold to dragon, starting with the stronghold kit (14 eyes)
+
+Structures are on here, so the stronghold is the seed's real one. You start on a flat plains or desert spot away from water, somewhere random 128 to 384 blocks from the stronghold, in any direction. 1.0 has an eye bug where eyes can lead you to a stronghold 600+ blocks away, so the mod only uses spots where eyes thrown from the tower and from around where your pit will be actually lead to the nearby one.
+
+The tower kit is what you'd have by then: nether bricks, leaves, nether brick fences, a boat, a fence gate, cactus, a pressure plate and a water bucket in the hotbar, plus more leaves, stone tools, steak, planks, string, feathers, flint, sticks, 7 blaze rods, wool, a crafting table, flint and steel, ladders and dirt. The stronghold kit swaps the tower blocks for cobble and leaves, and adds the eyes and a spare pearl.
+
+The splits are:
+
+- **Tower build**: ends when you die (your death reset in the pit). Dying before you've been 20 blocks up doesn't count.
+- **Portal room**: from your respawn until you're next to an End portal frame. More death resets on the way are fine.
+- **Enter End**, then **Dragon**, with the same HUD and bed report as the End fight.
+
+The tower starts at 8:30 in-game time, and the HUD counts down to night (11:00), then counts the overtime. Your death reset tells you how far before or after night it was. Stronghold attempts start as the night ends. Each mode keeps its own PBs, so a stronghold-only time never counts against a full run. Through the night the HUD also shows endermen killed, pearls dropped and the drop rate.
+
+**K** pressed twice saves your inventory as the tower kit (or the stronghold kit in stronghold mode).
 
 ### Pit planner
 
-On by default in full endgame and tower-only runs. The tower goes at the world spawn, since that's where you respawn on top after every death in the pit, and the mod already starts you on a flat spot there. The planner picks where to dig the pit, the set distance out (205 blocks by default) in the best of 36 directions (every 10 degrees), and draws the run on the ground: a cyan line from the tower to the pit, a yellow beam over the tower spot and a red beam over the pit, all seen through blocks. Chat says where the pit is when it's done (it starts 10 seconds after the world loads, while the game is still busy loading around you, and takes about half a minute more. The biome map, which costs nothing to read, picks the 16 directions worth a closer look first, with no ocean, river or swamp and few forests or hills. Then it generates the terrain those need, at most one chunk a tick and none while the game is already lagging. The HUD shows `Planning pit 40%` meanwhile), and the HUD shows `Pit -600 63 741  S 211m  flush 90%`: the pit, which way and how far it is from you, and the flush share.
+This is on by default for full and tower runs. The tower goes at spawn, since that's where you respawn after each death, and the planner works out the best spot for the pit 205 blocks out (you can change the distance). It draws the route on the ground through blocks: a cyan line to the pit, a yellow beam over the tower and a red beam over the pit. The HUD shows something like `Pit -600 63 741  S 211m  flush 90%`, so you always know where it is.
 
-Each of those directions is scored on:
+It starts about 10 seconds after the world loads and takes around half a minute, which is fine since you're busy building anyway. It loads the terrain slowly so it doesn't lag you, and shows `Planning pit 40%` while it works.
 
-- the run: water (and much worse, lava) to swim through, trees in the way, and climbs and drops along the line, with big steps costing more than gentle slopes
-- view: from a point every 40 blocks along the route and from the pit (counted double), how much of the ground within 48 blocks is open, spawnable and in your line of sight (a line from your eyes to an enderman's chest over it hits no terrain). A hill that hides the ground costs, and a rise with a wide view pays, so the line can go over a hill instead of around it when the view is worth the climb
-- spawnable ground: the share of open, solid, dry ground around the tower and the pit, instead of water, trees or nothing, so more of each spawn burst lands on the surface near you instead of in caves
-- the pit spot itself must be dry, flat (within a block over 3x3) and solid 44 blocks down under all of that 3x3: no cave, water or lava below it. If the spot on the line isn't, the nearest one within 8 blocks that is gets used
+It checks 36 directions, skips the ones with oceans, rivers, swamps or lots of forest and hills, and scores the rest on:
 
-Flush is the share of the area within 128 blocks of the tower that is over 128 blocks from the pit: every monster there despawns the moment you reach the pit, freeing the mob cap for the next burst. At 256 blocks it's everything; at 205 it's 90%, and what's left is the strip 77 to 128 blocks out from the tower toward the pit. 205 costs less running (and hunger) per lap. The distance is a setting (180 to 256), so you can try both and compare the averages with the enderman tracker. **J** plans again from where you are standing, as the tower spot. The lines go away at your death reset, once the pit is built.
+- **the run**: water (lava is way worse), trees in the way, and climbs and drops, with big steps costing more than gentle slopes
+- **view**: how much spawnable ground you can actually see along the way and from the pit. A hill that blocks your view costs points, and one with a wide view earns them
+- **spawnable ground**: open, dry, solid ground near the tower and the pit, so more of each spawn lands on the surface near you instead of in caves
+- **the pit spot itself**: it has to be dry, flat and solid all the way 44 blocks down, with no caves, water or lava underneath. If the spot on the line isn't, it uses the nearest one within 8 blocks that is
 
-## Crystal aim trainer
+"Flush" is how much of the area around the tower is over 128 blocks from the pit. Everything there despawns the moment you reach the pit, which frees up the mob cap. At 256 blocks out that's all of it, and at 205 it's 90%, but 205 is a lot less running. **J** replans from where you're standing. The lines disappear after your death reset.
 
-**C** on the title screen (or Crystal aim trainer in the practice menu) puts you in the middle of a new End island with a bow and 3 stacks of arrows, and the dragon taken out. The timer starts with your first arrow and stops when the last crystal goes. Every crystal gets a split in chat, the HUD shows crystals left, arrows shot and the share that hit, and the finish line gives the time per crystal (islands have different numbers of crystals). The best time is kept in `config/endpractice-crystals.txt`. **C** gives a new island.
+## Trainers
 
-After every arrow that misses, chat says where it went past the crystal and which way to aim the next one, measured from the crystal's middle at the point where the arrow got level with it: `Miss: 2.4 high: aim lower (left/right was fine)`, `Miss: 1.8 left: aim right (height was fine)`, or `hit a block 3.5 below it before it got there: aim higher` when it hit the tower or the ground short of the crystal. Within 1.3 of the middle in both directions counts as a hit, so anything inside that is `only just past it`. The last miss stays on the HUD.
+**C** (Crystals) puts you in the middle of a fresh End island with a bow, 3 stacks of arrows and no dragon. The timer starts on your first arrow and stops when the last crystal goes. You get a split for every crystal, and the HUD shows crystals left, arrows and accuracy.
 
-### Random crystals
+Every miss tells you how to fix the next shot, like `Miss: 2.4 high: aim lower (left/right was fine)`, or `hit a block 3.5 below it before it got there: aim higher` if you hit the tower.
 
-**R** on the title screen (or Random in the practice menu) is the trainer one crystal at a time. The island's crystals are taken out and one is put back on a random tower. You stand on a random end stone spot 10 to 56 blocks from it, facing roughly its way (up to 45 degrees off). Every spot is checked by simulating fully drawn bow shots from it (the arrow's real speed, drag and gravity, against the blocks in the way and the crystal's hitbox), and only spots with at least 1.5 degrees of aim that hit are used. Close shots stay in, but a wide tower whose top edge hides the crystal from where you'd stand is never given. Hit it and half a second later you are on a new spot with a new crystal on a different tower, with full health and arrows.
+**R** (Random crystals) is one crystal at a time. You get a random spot 10 to 56 blocks from a single crystal, roughly facing it. Every spot is checked by simulating real bow shots, so you'll never get one that's impossible to hit. Hit it and you're moved to a new spot and a new tower straight away. Hits in a row build a streak, and a miss ends it.
 
-Crystals hit without a missed arrow in between make a streak. A miss ends it (an arrow counts as a miss once it lands or flies more than 3 blocks past the crystal). The HUD shows the streak and your best, the time on the current crystal, the average time per hit, and hits, arrows and accuracy. Every ended streak is saved in `config/endpractice-streaks.txt` and the best one is kept from there. **R** gives a new island.
+### Eye throw
 
-## What it shows
+**Y** (Eye throw) puts you on a random spot 300 to 650 blocks from a stronghold, with 16 eyes of ender that keep refilling, a stack of cobble to pillar up with, and food. The HUD shows your coordinates in this mode. The kit is the Eye throw tab in Kits, or press **K** twice to save your inventory as it. Throw as many as you like, work out where the stronghold is, then either stand where you think it is and press **G**, or type `/guess x z`. Chat tells you where the portal room really was (that's where the eye drops once the stronghold has loaded), how many blocks off you were and which way it was, and your average and best are kept in Stats.
 
-Top left (hidden while F3 is open):
+Spots are 300 to 650 blocks from the stronghold, and about half are picked so an eye thrown from the ground hits the 1.0 eye bug and flies to a farther stronghold. 1.0 scores each stronghold as `dx·(1 + dy²) + dz²` (dy is the height gap) instead of the real distance, and until a stronghold has generated near you it treats all three as being at y 64. The trainer works the eye out the same way. Closer than about 300 blocks the stronghold has already generated when the area loads, and eyes always find it.
 
-- the timer, in game ticks from arriving to the dragon dying (pausing stops it)
-- dragon health and crystals left
-- your PB and the last bed
+Every throw is listed in chat with the height you threw from and which way it went. With **Eye trainer: coaching** on (Settings, on by default), each eye that hits the bug says so. After two throws far enough apart, chat shows where their lines cross and whether both eyes went to the same stronghold. It also says where the other two strongholds can be: 1.0 puts the three 120 degrees apart around 0,0, each 640 to 1152 blocks out and moved up to 112 blocks for its biome. From that it tells you whether either could be closer to you than the one you found. After your guess it says which stronghold your eyes led to and whether that was the closest one to where you started. Turn coaching off to practise without help. **Eye trainer: eye angles** (Settings, off by default) also gives each eye's angle, in the same yaw Minecraft uses.
 
-In chat after each bed that goes off near the dragon:
+## Blaze fight
 
-- `Bed 47/81, 3.2 from head: 3.0 behind, 1.0 below`: the damage done out of the 81 a perfect bed does, and where the bed was compared with the head's damage point, in the dragon's own directions (behind/in front, below/above, left/right)
-- `3 ticks late (0.15 s): the perfect tick does up to 63 (+16)`: how early or late your click was. Within half a second either side, the perfect tick is when the head came closest to where the bed went off. The line shows what a bed would have done then and how much more that is. `Perfect tick` means you hit it, and 1 tick off shows as `Good`.
-- if the bed only reached the body, tail or wings, which part, since those take a quarter of the damage plus 1
-- if the dragon was still invulnerable from an earlier hit, how much longer, since only damage above that hit counts
+**B** (Open spawner) and **N** (Enclosed spawner) put you in the doorway of a real fortress's blaze spawner room, facing the spawner. You get the kit you'd actually have at that point: stone tools, 3 stacks of leaves, 48 oak planks, 5 gravel, 5 feathers, 3 string, 4 cobble, steak, a crafting table and flint and steel, so you can overlap your pit crafts while you get rods. Any blazes already there are cleared, so every attempt starts the same.
 
-On a kill: the time, whether it's a PB, the beds used and the session average. Every finished time is saved in `config/endpractice-times.txt`.
+The timer runs until you have 7 rods (or 6, it's a setting). The HUD shows the time, your PB, your rods, blazes killed and the drop rate.
 
-## How bed damage works in 1.0
+If you play 1.0 tower, turn on **Blaze: tower crafts** in Settings. Then an attempt only finishes once you've also crafted a pressure plate, a fence gate, 3 ladders, 3 nether brick fences and a boat, and the HUD tells you what's still missing. These attempts get their own PBs.
 
-A bed is an explosion of power 5. Before damaging entities the explosion doubles its power to 10, so it reaches 10 blocks. For each dragon part in range the damage is `(q*q + q) / 2 * 80 + 1`, where `q = (1 - distance / 10) * exposure`. Distance is measured to the part's position, which is the bottom center of its hitbox, and exposure is the share of the part's hitbox the explosion can see through blocks.
+The mod finds fortresses from the seed the same way the game does, so it only has to generate the fortress itself. A spawner counts as enclosed when less than 25% of the space around its room is air or lava, and open when more than 50% is. If no nearby fortress has the kind you asked for, you get the closest one and chat lets you know.
 
-- The head is a 3x3x3 box whose bottom center is 5.5 blocks in front of the dragon's center. A bed right on that point does 81.
-- Every other part takes a quarter of its damage plus 1, so at most 21.
-- After a hit the dragon is invulnerable for 10 ticks, and a new hit in that time only counts for the amount above the last one.
+## The menu
 
-This is the same math as 1.7.10. What differs is where the dragon is drawn. 1.7 runs the dragon on the built-in server and draws it a few ticks late, so the real head is ahead of the one on screen. 1.0 has no built-in server, so the hitbox is where the dragon is drawn.
+The pearl menu has the modes grouped into Endgame, End Fight, Trainers and Blaze Fight, with their keys in grey. If you only use the menu, turn off **Mode keys on the title screen** in Settings. Underneath are:
 
-## Blaze practice
-
-**B** on the title screen (or Open blaze in the practice menu) practices an open blaze spawner, and **N** (Enclosed blaze) an enclosed one. Each attempt is a new world. You go straight into its nether through vanilla's own portal code and land in the doorway of a real fortress's blaze spawner room, facing the spawner, with the blaze kit. That's what a run has at the spawner: stone tools, 3 stacks of leaves, 48 oak planks, 5 gravel, 5 feathers, 3 string, 4 cobblestone, 16 steak, a crafting table and flint and steel, so you can overlap the crafts for the pit while you get rods. Blazes already there are cleared so every attempt starts the same.
-
-The timer runs from arriving until you have the set number of blaze rods (7 by default, or 6, a setting) in your inventory. The HUD shows the time, your PB, the rods, the blazes you've killed and the share that dropped a rod (vanilla: 0 or 1 a blaze). PBs are kept per spawner type and number of rods in `config/endpractice-blaze.txt`.
-
-**Blaze: tower crafts** (Settings, off by default) is for 1.0 tower runs: the attempt only finishes once you also have what the tower needs, a pressure plate, a fence gate, 3 ladders, 3 nether brick fences and a boat, all crafted from the kit and the fortress's nether bricks. The HUD shows what's still missing (`Need gate, ladders 1/3, boat`), and these attempts keep their own PBs.
-
-The fortress spots come from the seed the same way the game places them, so only the fortresses themselves are generated. A spawner counts as enclosed when under 25% of the space 1 to 3 blocks around its room (sides and top, not counting the rest of the fortress) is air or lava, and as open when over 50% is. If none of the nearby fortresses has the type you asked for, you get the closest match and chat says so. **K** pressed twice saves your inventory as the blaze kit.
-
-## Stats and the Lab
-
-The practice menu groups the modes: **Endgame** (Full run, Tower build, Stronghold), **End Fight** (Dragon fight), **Aim Trainer** (Crystals, Random crystals) and **Blaze Fight** (Open spawner, Enclosed spawner), with each section's keys in grey next to its name. **Mode keys on the title screen** (Settings) turns the keys off on the title screen if you'd rather only use the menu; in game they still restart the mode you're in. Under the modes are four more buttons:
-
-- **Settings**: keys, the HUD, the bed report, kits and the endgame times (below)
-- **Kits**: the kit editor (below)
-- **Stats**: your PBs. The End fight (with your average kill time over all kills and the last 10, and how many attempts you finished), every endgame mode's whole run and split PBs with the sum of best, the crystal trainer's best time, your best random crystal streak and the blaze PBs
-- **Lab**: the endgame night testing tools: Enderman stats, the enderman tracker and its surface range, enderman outlines and aggro dot, the spawn and flush overlays, and the pit planner with its distance and key
+- **Settings**: keys, HUD, bed report, kits and times
+- **Kits**: the kit editor
+- **Stats**: all your PBs in one place, with End fight averages and completion rate, endgame splits and sum of best, crystal times, your best random crystal streak, blaze PBs and your eye trainer average
+- **Lab**: tools for testing the endgame night (see below)
 
 ### Kit editor
 
-1.0 has no creative inventory, so **Kits** edits the four kits (End fight, Tower, Stronghold, Blaze) directly. Pick an item from the list on the right (type to search, scroll for more; left click gives a full stack, right click just one), then click inventory slots to put it there. Right click a slot to empty it. Click a slot with nothing picked to select it, then use -1, +1, Stack or Empty. Reset this kit goes back to the default, Done saves all four and Cancel throws the changes away. **K** pressed twice in an attempt still saves your current inventory as that mode's kit.
+1.0 has no creative mode, so this is how you change your kits. Pick a tab (End fight, Tower, Stronghold or Blaze), then pick an item from the list on the right. Type to search and scroll for more. Left click takes a stack and right click takes one. Click a slot to put it there, or right click a slot to empty it. You can also select a slot and use -1, +1, Stack or Empty. Done saves, Cancel doesn't, and Reset puts the default kit back.
 
-End fight attempts that you die in, leave, reset or abandon are saved in `config/endpractice-endfights.txt`, for the completion rate (kills from before 0.9.0 count as finished attempts). After every kill chat shows the all-time average, the last 10 and the completion rate.
+### Lab
+
+For digging into how the night works:
+
+- **Enderman tracker**: counts every enderman that spawns in full runs, and how many were on the surface near you, then saves the run when the night ends or you throw your first eye. Chat shows your averages over every run. It only works with Pearl luck set to vanilla, so the numbers are real.
+- **Tracker: cycles a night**: with the tracker on, also counts your death reset cycles each night (every death in the pit until the night is over, the tower death included) and shows the count on the HUD and the average in chat and Enderman stats
+- **Respawn timer**: on the death screen after your first death in the pit, counts down the ticks until the sky light hits its lowest (11:23 into a run in clear weather, sooner in rain), then says `RESPAWN NOW`. Chat tells you how many ticks early or late you respawned
+- **Enderman stats**: your averages and last runs from the tracker
+- **Enderman outlines**: pink boxes around every enderman, through walls
+- **Aggro dot**: a red dot over every enderman that's coming for you
+- **Spawn overlay**: the mob cap (`Cap 80/79`), despawns, and when the last spawn burst happened. In 1.0 the game tries to spawn in every chunk at once whenever you're under the cap, so it comes in big bursts
+- **Flush overlay**: after you respawn on the tower, how many of the mobs that were loaded while you were dead despawned (`Flushed 32/83 39%`, endermen in pink)
+- **Pearl luck**: `average` (exactly 1 pearl every 2 endermen), `lucky` (2 every 3) or `vanilla` (random)
+- **Pit planner** on or off, its distance and its key
+
+## Commands
+
+1.0 only has chat in multiplayer, so the mod adds it to singleplayer: press **T**, type, and Enter. Lines starting with `/` are commands:
+
+- `/gamemode s`, `c` or `sp` (or `/gm`, `/gms`, `/gmc`, `/gmsp`): survival, creative or spectator. Spectator is new, since 1.0 doesn't have it: you fly through blocks and see through them (everything is lit up, so caves and strongholds show from inside the ground), mobs ignore you, and you can't break, place, use or pick up anything
+- `/tp x y z`, with `~` for where you are (`/tp ~ ~20 ~` goes up 20)
+- `/time set day|noon|night|midnight|<ticks>`, `/time add <ticks>`, or `/time` to see it
+- `/weather clear|rain|thunder`
+- `/give <id> [count] [damage]`, like `/give 381 12` for 12 eyes of ender
+- `/heal`, `/kill`, `/pos`, `/seed`, `/guess x z` (eye trainer) and `/help`
+
+Using a command that changes the game during a practice attempt (anything but `/pos`, `/seed`, `/help`, `/kill` and `/guess`) means that attempt's times and stats aren't saved, so your PBs stay real. Commands can be turned off in Settings.
 
 ## Settings
 
-In game: the ender pearl button on the title screen, then Settings (or Lab for the testing tools). Click a setting to change it (shift+click goes back), click a key and press the new one. Done saves and applies straight away, Escape leaves without saving. The kits can be reset to the defaults there too.
+Everything's in game under Settings (and Lab). Click a setting to change it (shift click goes back). The Hotkeys section at the top has every mode's key: click one and press a new key, or shift click it to set it to NONE. A key shows red if something else already uses it, and there are buttons to set them all to NONE or back to the defaults. Done saves, Escape doesn't.
 
-The same settings are in `config/endpractice.properties`, created on first start. Restart the game after editing the file by hand.
+They're also in `config/endpractice.properties` if you'd rather edit the file. Restart the game after editing it.
 
 | Setting | Default | |
 |---|---|---|
-| `keyStart` | `P` | Start an attempt (title screen) or restart (while practicing) |
-| `keySaveKit` | `K` | Save your inventory as the kit |
+| `keyStart` | `P` | Start or restart the End fight |
+| `keySaveKit` | `K` | Save your inventory as the kit (press twice) |
 | `kit` | sword, bow and 7 beds in the hotbar; arrows, water bucket, cobble, pearls, bread, pickaxe | `slot:itemId:count[:damage]`, comma separated. Slots 0-8 hotbar, 9-35 inventory, 36-39 armor |
-| `keyEndgame` | `O` | Full endgame practice |
+| `keyEndgame` | `O` | Full endgame |
 | `keyTower` | `I` | Tower build only |
 | `keyStronghold` | `L` | Stronghold to dragon |
 | `keyCrystals` | `C` | Crystal aim trainer |
-| `keyRandomCrystals` | `R` | Random crystals: one at a time from random spots, with a streak |
-| `modeKeys` | `true` | The mode keys on the title screen (off: start modes from the menu only) |
-| `keyBlazeOpen` | `B` | Blaze practice at an open spawner |
-| `keyBlazeEnclosed` | `N` | Blaze practice at an enclosed spawner |
-| `blazeRods` | `7` | Rods to collect in blaze practice: 6 or 7 |
-| `blazeTowerCrafts` | `false` | Blaze practice also needs a pressure plate, fence gate, 3 ladders, 3 nether brick fences and a boat |
-| `blazeKit` | see Blaze practice | Same format as `kit` |
-| `towerKit` | see above | Same format as `kit` |
-| `strongholdKit` | 14 eyes, a pearl, tools, food, 16 cobble, leaves, wool, planks, crafting table, flint and steel | Same format as `kit` |
-| `towerStartTime` | `10200` | World time a tower build starts at, in ticks (10200 is 8:30 into a run, -1 leaves it alone) |
-| `nightTime` | `13200` | When night starts (13200 is 11:00 into a run). The tower build counts down to it |
-| `pearlLuck` | `average` | Endgame practice pearls. `average`: exactly 1 every 2 endermen (the first one drops), so 24 kills is always 12. `lucky`: 2 every 3, so 24 kills is 16. `vanilla`: random 0 or 1 |
-| `strongholdStartTime` | `22500` | World time stronghold attempts start at: the end of the night, turning to day |
-| `endermanTracker` | `false` | Only with `pearlLuck=vanilla`. Save the endermen of every full endgame run at night end or the first eye, and show the averages |
-| `endermanOutline` | `false` | Draw every enderman's hitbox as a pink box, seen through blocks, in practice worlds |
-| `endermanAggroDot` | `false` | A red dot above every enderman that's angry at you, seen through blocks, in practice worlds |
-| `flushOverlay` | `false` | HUD line with how many of the loaded monsters despawned when you last respawned on the tower |
-| `spawnOverlay` | `false` | HUD lines with the loaded monsters against the mob cap, despawns, and the last spawn bursts |
-| `endermanRange` | `87` | Surface endermen only count within this many blocks of you (0: anywhere loaded) |
-| `pitPlanner` | `true` | Plan the pit for full endgame and tower runs and draw the route |
-| `pitDistance` | `205` | How far from the tower the pit goes (180, 205, 220, 235, 250 or 256 in the menu) |
-| `keyPitPlan` | `J` | Plan the pit again from where you stand |
+| `keyRandomCrystals` | `R` | Random crystals |
+| `modeKeys` | `true` | Mode keys on the title screen (off: menu only) |
+| `keyBlazeOpen` | `B` | Open blaze spawner |
+| `keyBlazeEnclosed` | `N` | Enclosed blaze spawner |
+| `blazeRods` | `7` | Rods to get in blaze practice: 6 or 7 |
+| `blazeTowerCrafts` | `false` | Blaze practice also needs the tower crafts |
+| `keyEyeTrainer` | `Y` | Eye throw trainer |
+| `keyGuess` | `G` | Eye trainer: guess the stronghold is where you stand |
+| `eyeAngles` | `false` | Eye trainer: say each eye's angle |
+| `eyeCoaching` | `true` | Eye trainer: eye bug warnings, where your throws cross, where the other strongholds can be |
+| `commands` | `true` | Singleplayer chat and commands |
+| `eyeKit` | 16 eyes, 64 cobble, 16 steak | Same format as `kit` |
+| `blazeKit` | see Blaze fight | Same format as `kit` |
+| `towerKit` | see Endgame | Same format as `kit` |
+| `strongholdKit` | 14 eyes, a pearl, tools, food, cobble, leaves, wool, planks, crafting table, flint and steel | Same format as `kit` |
+| `towerStartTime` | `10200` | World time the tower build starts at (10200 is 8:30 in, -1 leaves it alone) |
+| `nightTime` | `13200` | When night starts (13200 is 11:00 in) |
+| `pearlLuck` | `average` | `average`, `lucky` or `vanilla` |
+| `strongholdStartTime` | `22500` | World time stronghold attempts start at (the end of the night) |
+| `endermanTracker` | `false` | Track endermen in full runs (needs `pearlLuck=vanilla`) |
+| `endermanOutline` | `false` | Pink boxes around endermen |
+| `endermanAggroDot` | `false` | Red dot over angry endermen |
+| `flushOverlay` | `false` | How many mobs despawned on your last respawn |
+| `cycleTracker` | `true` | With the enderman tracker, count death reset cycles each night |
+| `respawnTimer` | `true` | Count down to the lowest light on the death screen after your first pit death |
+| `spawnOverlay` | `false` | Mob cap, despawns and spawn bursts |
+| `endermanRange` | `87` | Surface endermen only count within this many blocks of you (0: anywhere) |
+| `pitPlanner` | `true` | Plan the pit and draw the route |
+| `pitDistance` | `205` | How far out the pit goes (180 to 256) |
+| `keyPitPlan` | `J` | Replan the pit from where you stand |
 | `hud` | `true` | Top left overlay |
 | `bedReport` | `true` | Chat report after each bed |
 | `bedReportRange` | `16.0` | Only report beds this close to the head |
 
-## Building
+Your times, PBs and runs are saved in the `config/endpractice-*.txt` files. Delete one to start that stat over.
 
-Standard Fabric Loom build with Ornithe's Ploceus plugin and Feather mappings. Gradle needs JDK 25 or newer.
+## Building it yourself
+
+It's a standard Fabric Loom build with Ornithe's Ploceus plugin and Feather mappings. Gradle needs JDK 25 or newer.
 
 ```
-./gradlew build          # the jar is in build/libs
-./gradlew runClient      # a development client with the mod
-./gradlew runSelfTest    # starts an attempt and sets off beds around the dragon's head, results in the log
-./gradlew runSelfTest -Pstress=60   # resets 60 times at random moments
-./gradlew runSelfTest -Pendgame=6   # runs 6 endgame attempts through every split, cycling the three modes
-./gradlew runSelfTest -Pcrystals=2  # 2 crystal trainer attempts, shooting arrows at the crystals
-./gradlew runSelfTest -Prandomcrystals=20   # 20 shots in random crystals: hits, and misses high, low and to the side
+./gradlew build          # the jar ends up in build/libs
+./gradlew runClient      # a dev client with the mod
+./gradlew runSelfTest    # automated tests (see build.gradle for the options)
 ```

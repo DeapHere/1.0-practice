@@ -1,0 +1,35 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "endpractice.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "client": [
+    "ArrowEntityAccessor",
+    "BiomeSourceMixin",
+    "BlazeMixin",
+    "ChunkCacheAccessor",
+    "ClientPlayerMixin",
+    "EnderEyeMixin",
+    "EntityInWallMixin",
+    "EnderDragonMixin",
+    "EndermanMixin",
+    "EndermanRendererMixin",
+    "ExplosionMixin",
+    "GameGuiMixin",
+    "IntCacheAccessor",
+    "MinecraftAccessor",
+    "MinecraftMixin",
+    "MobDespawnMixin",
+    "MobEntityAccessor",
+    "NaturalSpawnerMixin",
+    "PickupMixin",
+    "StructureFeatureAccessor",
+    "StructurePieceInvoker",
+    "TitleScreenMixin",
+    "WorldRendererMixin",
+    "WorldDataAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
