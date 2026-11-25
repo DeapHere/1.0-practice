@@ -1,5 +1,7 @@
 package endpractice.mixin;
 
+import endpractice.compat.RankedCompat;
+
 import endpractice.EndPractice;
 import endpractice.PracticeScreen;
 import net.minecraft.client.gui.screen.Screen;
@@ -23,7 +25,7 @@ public abstract class TitleScreenMixin extends Screen {
     @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
     private void endpractice$startKey(char chr, int key, CallbackInfo ci) {
         EndPractice.init();
-        if (!EndPractice.cfg.modeKeys) return;
+        if (!EndPractice.cfg.modeKeys || RankedCompat.busy()) return;
         if (key != Keyboard.KEY_NONE && key == EndPractice.cfg.keyStart) {
             EndPractice.queueStart();
             ci.cancel();
@@ -42,6 +44,15 @@ public abstract class TitleScreenMixin extends Screen {
         } else if (key != Keyboard.KEY_NONE && key == EndPractice.cfg.keyEyeTrainer) {
             EndPractice.queueEyes();
             ci.cancel();
+        } else if (key != Keyboard.KEY_NONE && key == EndPractice.cfg.keyPitSandbox) {
+            EndPractice.queueSandbox();
+            ci.cancel();
+        } else if (key != Keyboard.KEY_NONE && key == EndPractice.cfg.keyCharge) {
+            EndPractice.queueDoubleBeds();
+            ci.cancel();
+        } else if (key != Keyboard.KEY_NONE && key == EndPractice.cfg.keyOverworld) {
+            EndPractice.queueOverworld();
+            ci.cancel();
         } else if (EndPractice.queueEndgameKey(key)) {
             ci.cancel();
         }
@@ -50,14 +61,14 @@ public abstract class TitleScreenMixin extends Screen {
     @Inject(method = "init", at = @At("TAIL"))
     private void endpractice$addButton(CallbackInfo ci) {
         this.endpractice$button = new ButtonWidget(PRACTICE_BUTTON, this.width / 2 - 124, this.height / 4 + 48, 20, 20, "");
-        this.buttons.add(this.endpractice$button);
+        if (!RankedCompat.busy()) this.buttons.add(this.endpractice$button);
     }
 
     @Inject(method = "buttonClicked", at = @At("HEAD"), cancellable = true)
     private void endpractice$click(ButtonWidget button, CallbackInfo ci) {
         if (button.id == PRACTICE_BUTTON) {
             ci.cancel();
-            this.minecraft.openScreen(new PracticeScreen(this));
+            if (!RankedCompat.busy()) this.minecraft.openScreen(new PracticeScreen(this));
         }
     }
 
@@ -65,6 +76,11 @@ public abstract class TitleScreenMixin extends Screen {
     private void endpractice$renderButton(int mouseX, int mouseY, float tickDelta, CallbackInfo ci) {
         ButtonWidget b = this.endpractice$button;
         if (b == null || !this.buttons.contains(b)) return;
+        if (RankedCompat.busy()) {
+            // queued or in a ranked room: no practice from here until it's over
+            this.buttons.remove(b);
+            return;
+        }
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, this.minecraft.textureManager.load("/gui/items.png"));
         GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
         GL11.glEnable(GL11.GL_BLEND);

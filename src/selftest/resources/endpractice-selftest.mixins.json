@@ -3,6 +3,6 @@
   "minVersion": "0.8",
   "package": "endpractice.selftest",
   "compatibilityLevel": "JAVA_8",
-  "client": ["CrystalTestMixin", "OutlineTestMixin", "RandomCrystalTestMixin", "EndgameTestMixin", "ScreensTestMixin", "BlazeTestMixin", "EyeTestMixin", "SelfTestMixin", "StressMixin"],
+  "client": ["CrystalTestMixin", "OutlineTestMixin", "RandomCrystalTestMixin", "EndgameTestMixin", "ScreensTestMixin", "BlazeTestMixin", "EyeTestMixin", "SandboxTestMixin", "OverworldTestMixin", "SelfTestMixin", "DoubleBedTestMixin", "StressMixin"],
   "injectors": {"defaultRequire": 1}
 }

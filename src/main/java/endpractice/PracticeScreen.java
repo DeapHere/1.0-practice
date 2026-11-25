@@ -6,7 +6,7 @@ import org.lwjgl.input.Keyboard;
 
 /** The practice menu from the ender pearl button on the title screen: every mode, the settings, and the Endgame Lab (testing tools and stats). */
 public final class PracticeScreen extends Screen {
-    private static final int END = 0, FULL = 1, TOWER = 2, STRONGHOLD = 3, SETTINGS = 4, BACK = 5, CRYSTALS = 6, RANDOM_CRYSTALS = 7, STATS = 8, LAB = 9, BLAZE_OPEN = 10, BLAZE_ENCLOSED = 11, KITS = 12, EYES = 13;
+    private static final int END = 0, FULL = 1, TOWER = 2, STRONGHOLD = 3, SETTINGS = 4, BACK = 5, CRYSTALS = 6, RANDOM_CRYSTALS = 7, STATS = 8, LAB = 9, BLAZE_OPEN = 10, BLAZE_ENCLOSED = 11, KITS = 12, EYES = 13, SANDBOX = 14, OVERWORLD = 15, DOUBLE_BEDS = 16;
 
     private final Screen parent;
 
@@ -30,7 +30,8 @@ public final class PracticeScreen extends Screen {
         this.buttons.add(new ButtonWidget(TOWER, x + 68, y, 64, 20, "Tower build"));
         this.buttons.add(new ButtonWidget(STRONGHOLD, x + 136, y, 64, 20, "Stronghold"));
         y += SECTION;
-        this.buttons.add(new ButtonWidget(END, x, y, 200, 20, "Dragon fight"));
+        this.buttons.add(new ButtonWidget(END, x, y, 132, 20, "Dragon fight"));
+        this.buttons.add(new ButtonWidget(DOUBLE_BEDS, x + 136, y, 64, 20, "Double beds"));
         y += SECTION;
         this.buttons.add(new ButtonWidget(CRYSTALS, x, y, 64, 20, "Crystals"));
         this.buttons.add(new ButtonWidget(RANDOM_CRYSTALS, x + 68, y, 64, 20, "Random"));
@@ -43,7 +44,9 @@ public final class PracticeScreen extends Screen {
         this.buttons.add(new ButtonWidget(KITS, x + 51, y, 47, 20, "Kits"));
         this.buttons.add(new ButtonWidget(STATS, x + 102, y, 47, 20, "Stats"));
         this.buttons.add(new ButtonWidget(LAB, x + 153, y, 47, 20, "Lab"));
-        this.buttons.add(new ButtonWidget(BACK, x, y + 24, "Back"));
+        this.buttons.add(new ButtonWidget(OVERWORLD, x, y + 24, 64, 20, "Overworld"));
+        this.buttons.add(new ButtonWidget(SANDBOX, x + 68, y + 24, 64, 20, "Pit sandbox"));
+        this.buttons.add(new ButtonWidget(BACK, x + 136, y + 24, 64, 20, "Back"));
     }
 
     /** The section's keys, in grey after its heading, when the mode keys are on. */
@@ -68,6 +71,9 @@ public final class PracticeScreen extends Screen {
             case BLAZE_ENCLOSED: EndPractice.queueBlaze(true); break;
             case RANDOM_CRYSTALS: EndPractice.queueCrystals(true); break;
             case EYES: EndPractice.queueEyes(); break;
+            case SANDBOX: EndPractice.queueSandbox(); break;
+            case OVERWORLD: EndPractice.queueOverworld(); break;
+            case DOUBLE_BEDS: EndPractice.queueDoubleBeds(); break;
             case SETTINGS: this.minecraft.openScreen(new SettingsScreen(this)); break;
             case STATS: this.minecraft.openScreen(StatsScreen.pbs(this)); break;
             case KITS: this.minecraft.openScreen(new KitEditorScreen(this)); break;
@@ -81,7 +87,7 @@ public final class PracticeScreen extends Screen {
         this.renderBackground();
         Config c = EndPractice.cfg;
         this.drawCenteredString(this.textRenderer, "OldschoolPrac", this.width / 2, top, 0xFFFFFF);
-        String[] k = {keys(c.keyEndgame, c.keyTower, c.keyStronghold), keys(c.keyStart), keys(c.keyCrystals, c.keyRandomCrystals, c.keyEyeTrainer),
+        String[] k = {keys(c.keyEndgame, c.keyTower, c.keyStronghold), keys(c.keyStart, c.keyCharge), keys(c.keyCrystals, c.keyRandomCrystals, c.keyEyeTrainer),
                 keys(c.keyBlazeOpen, c.keyBlazeEnclosed)};
         for (int i = 0; i < HEADINGS.length; i++) {
             this.drawString(this.textRenderer, HEADINGS[i] + k[i], this.width / 2 - 100, top + 14 + i * SECTION, 0xD8A0FF);

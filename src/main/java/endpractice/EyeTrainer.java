@@ -89,6 +89,43 @@ public final class EyeTrainer {
         return active;
     }
 
+    /**
+     * Where an eye thrown at x z goes in practice: the closest portal room of the three strongholds, so there's no eye
+     * bug. Null (1.0's own targeting) with Vanilla eye targeting on, outside the practice modes, or while ranked runs.
+     */
+    public static BlockPos eyeGoesTo(net.minecraft.world.World world, int x, int z) {
+        if (EndPractice.cfg == null || EndPractice.cfg.vanillaEyes || endpractice.compat.RankedCompat.busy() || !EndPractice.inPracticeWorld()) return null;
+        BlockPos[] r = closestRoom(world, x, z);
+        return r == null ? null : r[1];
+    }
+
+    /** The stronghold (its spot) whose portal room is closest to x z, and that room's centre. */
+    static BlockPos[] closestRoom(net.minecraft.world.World world, double x, double z) {
+        net.minecraft.world.gen.structure.StructureFeature f = strongholdFeature(world);
+        if (f == null) return null;
+        @SuppressWarnings("unchecked")
+        java.util.List<BlockPos> list = ((endpractice.mixin.StructureFeatureAccessor) f).endpractice$potentialPositions();
+        if (list == null || list.isEmpty()) {
+            // the three spots are worked out on the first search
+            try {
+                f.findNearestPosition(world, (int) x, 64, (int) z);
+            } catch (Exception e) {
+                EndPractice.log("couldn't find the strongholds: " + e);
+            }
+            list = ((endpractice.mixin.StructureFeatureAccessor) f).endpractice$potentialPositions();
+            if (list == null || list.isEmpty()) return null;
+        }
+        BlockPos[] best = null;
+        double d = Double.MAX_VALUE;
+        for (BlockPos s : new ArrayList<BlockPos>(list)) {
+            BlockPos room = portalRoom(world, s);
+            if (room == null) continue;
+            double e = Math.hypot(room.x - x, room.z - z);
+            if (e < d) { d = e; best = new BlockPos[]{s, room}; }
+        }
+        return best;
+    }
+
     static void stop() {
         active = false;
     }
@@ -110,6 +147,15 @@ public final class EyeTrainer {
         startPos = new Vec3i((int) Math.floor(p.x), (int) Math.floor(p.y), (int) Math.floor(p.z));
         // the stronghold the spot was picked around: from here an eye thrown from the wrong height may go elsewhere
         target = Endgame.spotStronghold != null ? Endgame.spotStronghold : eyeTarget(mc.world, startPos.x, 80, startPos.z, false);
+        if (!EndPractice.cfg.vanillaEyes) {
+            // eyes go to the closest portal room, so that's the one to find
+            BlockPos[] r = closestRoom(mc.world, startPos.x, startPos.z);
+            if (r != null) target = r[0];
+        }
+        keimaPending = false;
+        keimaEye = null;
+        keimaBase = 0;
+        calibrating = 0;
         eyes = 0;
         throwsList.clear();
         startTime = mc.world.getTime();
@@ -124,6 +170,11 @@ public final class EyeTrainer {
 
     static void tick(Minecraft mc) {
         if (!active || mc.player == null) return;
+        if (keimaPending && mc.screen == null && (keimaEye == null || keimaEye.removed || mc.world.getTime() - keimaThrown > 70)) {
+            keimaPending = false;
+            keimaEye = null;
+            mc.openScreen(new KeimaScreen());
+        }
         if (endTime < 0) {
             // keep 16 eyes
             PlayerEntity p = mc.player;
@@ -151,11 +202,19 @@ public final class EyeTrainer {
         BlockPos sim = eyeTarget(mc.world, px, py, pz, false);
         EndPractice.log("eye to " + (int) tx + " " + (int) tz + ", worked out " + (sim == null ? "none" : sim.x + " " + sim.z) + ", target " + (target == null ? "none" : target.x + " " + target.z));
         throwsList.add(new double[]{eye.x, eye.z, dx, dz, tx, tz});
+        if (keimaPairDone()) {
+            // the Keima method: you'll be asked how many pixels the crosshair moved once this eye is done
+            keimaPending = true;
+            keimaEye = eye;
+            keimaThrown = mc.world.getTime();
+            keimaAnswered = false;
+        }
         if (!EndPractice.cfg.eyeCoaching || target == null) return;
 
         // the eye bug: this eye went to a stronghold that isn't the closest one to where you threw it
         BlockPos closest = closestStronghold(mc.world, eye.x, eye.z);
-        if (closest != null && Math.hypot(closest.x - tx, closest.z - tz) > 64) {
+        BlockPos went = strongholdOf(mc.world, tx, tz);
+        if (EndPractice.cfg.vanillaEyes && closest != null && went != null && !sameSpot(closest, went)) {
             EndPractice.chat(mc, "§c Eye bug:§r this eye went to a stronghold " + (int) Math.hypot(tx - eye.x, tz - eye.z)
                     + " blocks away, but one is " + (int) Math.hypot(closest.x - eye.x, closest.z - eye.z) + " blocks away.");
         }
@@ -197,10 +256,11 @@ public final class EyeTrainer {
         }
         PlayerEntity p = mc.player;
         int dist = (int) Math.hypot(cx - p.x, cz - p.z);
-        boolean same = Math.hypot(a[4] - b[4], a[5] - b[5]) <= 64;
+        BlockPos sa = strongholdOf(mc.world, a[4], a[5]), sb = strongholdOf(mc.world, b[4], b[5]);
+        boolean same = sa != null && sb != null ? sameSpot(sa, sb) : Math.hypot(a[4] - b[4], a[5] - b[5]) <= 64;
         EndPractice.chat(mc, "§b Eyes " + ai + " and " + n + " cross at " + (int) cx + " " + (int) cz + "§r, " + dist + " blocks "
                 + direction(cx - p.x, cz - p.z) + " of you (" + String.format(Locale.ROOT, "%.0f", Math.toDegrees(Math.asin(Math.min(1, bestSin))))
-                + " degrees apart)." + (same ? " §aBoth went to the same stronghold.§r" : " §cThey went to different strongholds (eye bug), so this crossing is nowhere.§r"));
+                + " degrees apart)." + (same ? " §aBoth went to the same stronghold.§r" : (EndPractice.cfg.vanillaEyes ? " §cThey went to different strongholds (eye bug), so this crossing is nowhere.§r" : " §cThey went to different strongholds (you crossed the halfway line between two), so this crossing is nowhere.§r")));
         if (same) otherTwo(mc, cx, cz);
     }
 
@@ -264,6 +324,40 @@ public final class EyeTrainer {
         return ((net.minecraft.world.gen.structure.StructurePiece) st.getPieces().get(0)).getCenterPos();
     }
 
+    private static boolean sameSpot(BlockPos a, BlockPos b) {
+        return a.x >> 4 == b.x >> 4 && a.z >> 4 == b.z >> 4;
+    }
+
+    /**
+     * Which of the three strongholds (its spot) an eye flying to x z is going to. An eye goes either to a spot itself
+     * (no stronghold generated yet) or to a generated stronghold's portal room, which can be 100 blocks or more from
+     * its spot, so it's matched by the stronghold it belongs to, not by distance.
+     */
+    static BlockPos strongholdOf(net.minecraft.world.World world, double x, double z) {
+        net.minecraft.world.gen.structure.StructureFeature f = strongholdFeature(world);
+        if (f == null) return null;
+        @SuppressWarnings("unchecked")
+        java.util.List<BlockPos> list = ((endpractice.mixin.StructureFeatureAccessor) f).endpractice$potentialPositions();
+        if (list == null || list.isEmpty()) return null;
+        int ix = (int) Math.floor(x), iz = (int) Math.floor(z);
+        for (java.util.Map.Entry<Long, net.minecraft.world.gen.structure.StructureStart> e : ((endpractice.mixin.StructureFeatureAccessor) f).endpractice$getStructures().entrySet()) {
+            net.minecraft.world.gen.structure.StructureStart st = e.getValue();
+            if (st.getPieces().isEmpty()) continue;
+            BlockPos c = ((net.minecraft.world.gen.structure.StructurePiece) st.getPieces().get(0)).getCenterPos();
+            if (Math.abs(c.x - ix) <= 1 && Math.abs(c.z - iz) <= 1) {
+                // this start's chunk is one of the spots
+                for (BlockPos s : list) if (net.minecraft.util.math.ChunkPos.toLong(s.x >> 4, s.z >> 4) == e.getKey()) return s;
+            }
+        }
+        BlockPos best = null;
+        double d = Double.MAX_VALUE;
+        for (BlockPos s : list) {
+            double h = Math.hypot(s.x - x, s.z - z);
+            if (h < d) { d = h; best = s; }
+        }
+        return best;
+    }
+
     /** The world's closest stronghold to x z, of the three (as straight distance, not the eye's sum). */
     private static BlockPos closestStronghold(net.minecraft.world.World world, double x, double z) {
         net.minecraft.world.gen.structure.StructureFeature f = strongholdFeature(world);
@@ -318,7 +412,8 @@ public final class EyeTrainer {
             // which stronghold the eyes led to (the last one's), and the closest from where you started
             double[] last = throwsList.get(throwsList.size() - 1);
             BlockPos near = closestStronghold(mc.world, startPos.x, startPos.z);
-            boolean ledToTarget = Math.min(Math.hypot(last[4] - target.x, last[5] - target.z), Math.hypot(last[4] - at.x, last[5] - at.z)) <= 64;
+            BlockPos led = strongholdOf(mc.world, last[4], last[5]);
+            boolean ledToTarget = led != null ? sameSpot(led, target) : Math.min(Math.hypot(last[4] - target.x, last[5] - target.z), Math.hypot(last[4] - at.x, last[5] - at.z)) <= 64;
             boolean targetClosest = near != null && Math.hypot(near.x - target.x, near.z - target.z) <= 64;
             EndPractice.chat(mc, "Your last eye led to " + (ledToTarget ? "this stronghold" : "§canother stronghold§r at " + (int) last[4] + " " + (int) last[5])
                     + (targetClosest ? ", the closest one to where you started." : ". §eThe closest to where you started was at " + near.x + " " + near.z + ".§r"));
@@ -334,11 +429,247 @@ public final class EyeTrainer {
         EndPractice.chat(mc, Config.keyName(EndPractice.cfg.keyEyeTrainer) + " for a new one.");
     }
 
+    // ---- the Keima method -------------------------------------------------------------------------------------------
+    //
+    // Line the side of your crosshair up with a thrown eye, jump sideways 4 times, throw again, and count how many of
+    // the eye's 16 pixels the crosshair has moved by: the stronghold is about C / pixels away. The eye's sprite is half a
+    // block wide (16 pixels, so a pixel is 1/32 of a block), and it hovers about L blocks out, so a pixel is (1/32)/L of
+    // a radian, while moving d blocks sideways turns the eye's line by d / distance. So distance = 32 * L * d / pixels.
+    // In 1.0 the eye hovers 12 blocks out and 4 sideways jumps cover 8.3 blocks (both measured in game).
+
+    /** How far out the eye hovers (horizontally) while you count. */
+    static final double KEIMA_L = 12.0;
+    /** Four sideways jumps, holding strafe and jump from standing, to the fourth landing. */
+    static final double KEIMA_D = 8.3;
+    public static final int KEIMA_C = (int) Math.round(32 * KEIMA_L * KEIMA_D / 10.0) * 10;
+    /** Blocks per sprint jump in 1.0, steady on flat ground (measured: 30 jumps, 112.5 blocks, 12 ticks each). */
+    static final double SPRINT_JUMP = 3.75;
+    /** Tries before the calibrated constant is used. */
+    static final int CALIBRATE_MIN = 5;
+
+    private static boolean keimaPending, keimaAnswered;
+    private static EnderEyeEntity keimaEye;
+    private static long keimaThrown;
+    /** The first throw of the pair being asked about. */
+    private static int keimaBase;
+    /** Guided calibration: tries left (0: off), and the constants from this run. */
+    private static int calibrating;
+    private static final List<Double> calibrationRun = new ArrayList<>();
+
+    /** Whether this throw makes a Keima pair to ask about. */
+    private static boolean keimaPairDone() {
+        int n = throwsList.size() - keimaBase;
+        return n == 2 && (calibrating > 0 || EndPractice.cfg.keima && keimaBase == 0);
+    }
+
+    /** The pair's throws: true pixel offset, blocks moved sideways, real distance from the second throw. Null if fewer. */
+    public static double[] keimaTruth() {
+        if (throwsList.size() < keimaBase + 2) return null;
+        double[] a = throwsList.get(keimaBase), b = throwsList.get(keimaBase + 1);
+        double la = Math.hypot(a[2], a[3]), lb = Math.hypot(b[2], b[3]);
+        if (la == 0 || lb == 0) return null;
+        double ax = a[2] / la, az = a[3] / la, bx = b[2] / lb, bz = b[3] / lb;
+        double angle = Math.abs(Math.atan2(cross(ax, az, bx, bz), ax * bx + az * bz));
+        double side = Math.abs(cross(b[0] - a[0], b[1] - a[1], ax, az));
+        double real = Math.hypot(b[4] - b[0], b[5] - b[1]);
+        return new double[]{32 * KEIMA_L * angle, side, real};
+    }
+
+    /** The constant in use: your calibrated one (Calibrated, once there are 5 tries), else the fixed one. */
+    public static int keimaConstant() {
+        double[] c = calibration();
+        if (EndPractice.cfg.keimaCalibrated && c[0] >= CALIBRATE_MIN) return (int) Math.round(c[1]);
+        return EndPractice.cfg.keimaFixed;
+    }
+
+    private static String sprint(double blocks) {
+        return Math.round(blocks) + " blocks ~ " + Math.round(blocks / SPRINT_JUMP) + " sprint jumps";
+    }
+
+    /** /keima calibrate: a guided run of 5 tries. */
+    static void startCalibration(Minecraft mc) {
+        if (!active) {
+            EndPractice.chat(mc, "§c/keima calibrate works in the eye throw trainer.");
+            return;
+        }
+        calibrating = CALIBRATE_MIN;
+        calibrationRun.clear();
+        keimaBase = throwsList.size();
+        keimaPending = false;
+        EndPractice.chat(mc, "§bKeima calibration§r: " + CALIBRATE_MIN + " tries. Each one: throw an eye, line the side of your crosshair up with it, hold strafe and jump 4 times without turning, throw again, then type how many pixels the crosshair moved. Jump the way you would in a run.");
+    }
+
+    /** /keima reset: starts the calibration over (the old tries are kept in a .old file). */
+    static void resetCalibration(Minecraft mc) {
+        File f = keimaFile();
+        if (!f.isFile()) {
+            EndPractice.chat(mc, "No Keima tries saved yet.");
+            return;
+        }
+        File old = new File(f.getParentFile(), "endpractice-keima-" + System.currentTimeMillis() + ".old");
+        EndPractice.chat(mc, f.renameTo(old) ? "Keima calibration and stats cleared (the old tries are in config/" + old.getName() + ")." : "§cCouldn't clear " + f.getName() + ".");
+    }
+
+    /** Your answer: pixels (under 100) or a distance guess in blocks (100 or more). */
+    public static void keimaAnswer(Minecraft mc, double value) {
+        double[] t = keimaTruth();
+        if (!active || t == null) {
+            EndPractice.chat(mc, "§cThrow two eyes first (line up with the first, 4 jumps sideways, throw again).");
+            return;
+        }
+        if (value <= 0) {
+            EndPractice.chat(mc, "§cThat's not a pixel count.");
+            return;
+        }
+        boolean pixels = value < 100;
+        double real = t[2];
+        double[] cal = calibration();
+        int use = keimaConstant();
+        boolean usingCal = EndPractice.cfg.keimaCalibrated && cal[0] >= CALIBRATE_MIN;
+        double est = pixels ? use / value : value;
+        double err = est - real, pct = err * 100 / real;
+        String grade = Math.abs(pct) <= 5 ? "§aspot on§r" : Math.abs(pct) <= 15 ? "§agood§r" : Math.abs(pct) <= 30 ? "§eclose§r" : "§cway off§r";
+        if (pixels) {
+            StringBuilder sb = new StringBuilder("§bKeima§r " + fmt(value) + " px: ");
+            double fe = EndPractice.cfg.keimaFixed / value;
+            sb.append(usingCal ? "" : "§e").append("fixed ").append(EndPractice.cfg.keimaFixed).append(" -> ").append(Math.round(fe))
+                    .append(String.format(Locale.ROOT, " (%+.1f%%)", (fe - real) * 100 / real)).append(usingCal ? "" : "§r");
+            if (cal[0] > 0) {
+                double ce = cal[1] / value;
+                sb.append(", ").append(usingCal ? "§e" : "").append("calibrated ").append(Math.round(cal[1])).append(" -> ").append(Math.round(ce))
+                        .append(String.format(Locale.ROOT, " (%+.1f%%)", (ce - real) * 100 / real)).append(usingCal ? "§r" : "");
+            }
+            sb.append(". Real §e").append(Math.round(real)).append("§r blocks to the portal room (").append(grade).append(").");
+            EndPractice.chat(mc, sb.toString());
+        } else {
+            EndPractice.chat(mc, "§bKeima§r you guessed §e" + Math.round(est) + "§r, real §e" + Math.round(real) + "§r blocks to the portal room: "
+                    + (err >= 0 ? "+" : "") + Math.round(err) + String.format(Locale.ROOT, " (%+.1f%%, ", pct) + grade + ").");
+        }
+        EndPractice.chat(mc, "§7 ~" + sprint(est) + " (real: " + sprint(real) + ").§r");
+        EndPractice.chat(mc, "§7 True offset " + fmt(t[0]) + " px. You moved " + fmt(t[1]) + " blocks sideways, so your jumps this time make the constant "
+                + Math.round(32 * KEIMA_L * t[1]) + (pixels ? ", and with your count, " + Math.round(value * real) : "") + ".§r");
+        if (keimaAnswered) {
+            EndPractice.chat(mc, "§7Not saved: already answered for these throws.§r");
+            return;
+        }
+        keimaAnswered = true;
+        if (Commands.cheated) {
+            EndPractice.chat(mc, "§7Not saved to your stats: commands were used.§r");
+        } else {
+            keimaSave(pixels ? value : -1, est, real, pct, t[1], pixels ? value * real : -1);
+            double[] st = keimaStats();
+            if (st[0] > 0) EndPractice.chat(mc, String.format(Locale.ROOT, "§7Keima: %.1f%% off on average over the last %d, best %.1f%%, %d tries§r", st[1], (int) Math.min(10, st[0]), st[2], (int) st[0]));
+            cal = calibration();
+            if (cal[0] > 0 && calibrating == 0) EndPractice.chat(mc, constantLine(cal) + (cal[0] < CALIBRATE_MIN ? " §7(" + (int) cal[0] + " of " + CALIBRATE_MIN + " tries: it's used once there are " + CALIBRATE_MIN + ")§r" : ""));
+        }
+        if (calibrating > 0) {
+            // a guided run counts even with commands used: it's only working out your constant
+            if (pixels) calibrationRun.add(value * real);
+            calibrating--;
+            keimaBase = throwsList.size();
+            if (calibrating > 0) {
+                EndPractice.chat(mc, "§bCalibration§r " + (CALIBRATE_MIN - calibrating) + "/" + CALIBRATE_MIN + " done. Next: throw, line up, 4 jumps sideways, throw again.");
+            } else if (!calibrationRun.isEmpty()) {
+                double m = median(calibrationRun);
+                EndPractice.chat(mc, "§bCalibration done.§r Your constant: §e~" + Math.round(m) + "§r. In a run, distance ~ " + Math.round(m) + " / pixels."
+                        + " §7(like 4 jumps of " + fmt(m / (32 * KEIMA_L)) + " blocks with exact counting, median of " + calibrationRun.size() + ")§r");
+                if (Commands.cheated) EndPractice.chat(mc, "§7Commands were used, so it isn't saved as your calibrated constant: /keima fixed " + Math.round(m) + " uses it anyway.§r");
+            }
+        }
+    }
+
+    /** "Your constant: ~XXXX ..." from the calibration numbers. */
+    static String constantLine(double[] cal) {
+        return "§bYour constant: ~" + Math.round(cal[1]) + "§r (±" + Math.round(cal[2]) + ", last " + (int) Math.min(10, cal[0]) + " tries, like 4 jumps of "
+                + fmt(cal[1] / (32 * KEIMA_L)) + " blocks). In a run, distance ~ " + Math.round(cal[1]) + " / pixels.";
+    }
+
+    private static double median(List<Double> v) {
+        List<Double> s = new ArrayList<>(v);
+        java.util.Collections.sort(s);
+        int n = s.size();
+        return n % 2 == 1 ? s.get(n / 2) : (s.get(n / 2 - 1) + s.get(n / 2)) / 2;
+    }
+
+    /** Tries with a pixel count, the median of their constants (count x real distance) over the last 10, and the spread (sd). */
+    static double[] calibration() {
+        List<Double> cs = new ArrayList<>();
+        for (String[] p : keimaRows()) {
+            if (p.length < 7) continue;
+            try {
+                double c = Double.parseDouble(p[6].trim());
+                if (c > 0) cs.add(c);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        if (cs.isEmpty()) return new double[]{0, 0, 0};
+        List<Double> last = cs.subList(Math.max(0, cs.size() - 10), cs.size());
+        double m = median(last), mean = 0, sd = 0;
+        for (double c : last) mean += c;
+        mean /= last.size();
+        for (double c : last) sd += (c - mean) * (c - mean);
+        sd = Math.sqrt(sd / last.size());
+        return new double[]{cs.size(), m, sd};
+    }
+
+    private static String fmt(double v) {
+        return String.format(Locale.ROOT, "%.1f", v);
+    }
+
+    private static File keimaFile() {
+        return new File(Minecraft.getWorkingDirectory(), "config/endpractice-keima.txt");
+    }
+
+    // config/endpractice-keima.txt: time,pixels (-1 for a distance guess),estimate,real,% off,blocks sideways,constant (pixels x real, -1)
+    private static void keimaSave(double px, double est, double real, double pct, double side, double constant) {
+        try {
+            File f = keimaFile();
+            f.getParentFile().mkdirs();
+            String line = String.format(Locale.ROOT, "%d,%.1f,%d,%d,%.1f,%.2f,%.0f%n", System.currentTimeMillis(), px, Math.round(est), Math.round(real), pct, side, constant);
+            Files.write(f.toPath(), line.getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+        } catch (Exception e) {
+            EndPractice.log("couldn't save the Keima try: " + e);
+        }
+    }
+
+    private static List<String[]> keimaRows() {
+        List<String[]> rows = new ArrayList<>();
+        try {
+            File f = keimaFile();
+            if (f.isFile()) for (String line : Files.readAllLines(f.toPath(), StandardCharsets.UTF_8)) rows.add(line.split(","));
+        } catch (Exception e) {
+            EndPractice.log("couldn't read the Keima tries: " + e);
+        }
+        return rows;
+    }
+
+    /** tries, average % off (absolute) over the last 10, best % off. */
+    static double[] keimaStats() {
+        List<Double> offs = new ArrayList<>();
+        for (String[] p : keimaRows()) {
+            if (p.length < 5) continue;
+            try {
+                offs.add(Math.abs(Double.parseDouble(p[4].trim())));
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        if (offs.isEmpty()) return new double[]{0, 0, 0};
+        double best = Double.MAX_VALUE, sum = 0;
+        for (double o : offs) best = Math.min(best, o);
+        int from = Math.max(0, offs.size() - 10);
+        for (int i = from; i < offs.size(); i++) sum += offs.get(i);
+        return new double[]{offs.size(), sum / (offs.size() - from), best};
+    }
+
     static List<String> hud(Minecraft mc) {
         List<String> lines = new ArrayList<>();
         if (!active || mc.world == null) return lines;
         long ticks = (endTime >= 0 ? endTime : mc.world.getTime()) - startTime;
         lines.add("§dEye trainer§r  " + EndPractice.time(ticks) + "   Eyes " + eyes);
+        if (EndPractice.cfg.keimaOverlay) {
+            double[] t = keimaTruth();
+            if (t != null) lines.add("§bKeima§r true offset " + fmt(t[0]) + " px, moved " + fmt(t[1]) + " sideways");
+        }
         if (mc.player != null) lines.add(String.format(Locale.ROOT, "XYZ %.1f / %.1f / %.1f", mc.player.x, mc.player.y, mc.player.z));
         if (result != null) lines.add(result);
         else lines.add("§7" + (EndPractice.cfg.keyGuess != org.lwjgl.input.Keyboard.KEY_NONE ? Config.keyName(EndPractice.cfg.keyGuess) + " guesses here, or " : "") + "/guess x z§r");
@@ -389,6 +720,10 @@ public final class EyeTrainer {
 
     static List<String> pbLines() {
         List<String> out = new ArrayList<>();
+        double[] ks = keimaStats();
+        out.add("§bKeima method§r" + (ks[0] == 0 ? "   §7none§r" : String.format(Locale.ROOT, "   best §e%.1f%% off§r   last %d avg §e%.1f%%§r, %d tries", ks[2], (int) Math.min(10, ks[0]), ks[1], (int) ks[0])));
+        double[] cal = calibration();
+        if (cal[0] > 0) out.add("   " + constantLine(cal));
         long[] st = stats();
         out.add("§dEye throw trainer§r" + (st[0] == 0 ? "   §7none§r" : "   best §e" + st[3] + " blocks off§r   avg §e" + st[1]
                 + "§r over " + st[0] + ", " + String.format(Locale.ROOT, "%.1f", st[2] / 10.0) + " eyes each"));

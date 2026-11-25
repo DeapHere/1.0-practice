@@ -441,7 +441,7 @@ public final class Endgame {
         preparing = true;
         trainerSpot = true;
         // half the time a spot where an eye thrown from the ground goes to the wrong stronghold, so triangulating matters
-        trainerWantsBug = Integer.getInteger("endpractice.eyes", 0) == 2 || new Random().nextBoolean(); // 2: the self test wants a bugged spot
+        trainerWantsBug = Integer.getInteger("endpractice.eyes", 0) == 2 || EndPractice.cfg.vanillaEyes && new Random().nextBoolean(); // 2: the self test wants a bugged spot
         spotStronghold = null;
         try {
             makeWorld(mc);
@@ -450,6 +450,82 @@ public final class Endgame {
             trainerSpot = false;
         }
         mc.openScreen(null);
+    }
+
+    /**
+     * A practice world from the seeds given, each checked by the finder (which may generate terrain) until one gives a
+     * spot, then the player is put there and the world is prepared as usual. Returns the spot, or null.
+     */
+    static Vec3i makeCustomWorld(Minecraft mc, String name, java.util.function.LongSupplier seeds, java.util.function.Function<World, Vec3i> finder, int maxTries) {
+        mc.setWorld(null);
+        mc.interactionManager = new SurvivalInteractionManager(mc);
+        preparing = true;
+        Vec3i found = null;
+        try {
+            long t0 = System.currentTimeMillis();
+            int tries = 0;
+            while (true) {
+                tries++;
+                mc.getWorldStorageSource().delete(FOLDER);
+                EndPractice.resetBiomeArrayPool();
+                EndPractice.skipOverworldPrep = true;
+                try {
+                    mc.startGame(FOLDER, name, Versions.newWorldSettings(seeds.getAsLong(), true));
+                } finally {
+                    EndPractice.skipOverworldPrep = false;
+                }
+                found = finder.apply(mc.world);
+                if (found != null || tries >= maxTries) break;
+                mc.setWorld(null);
+            }
+            EndPractice.log(name + ": spot after " + tries + " worlds, " + (System.currentTimeMillis() - t0) + " ms" + (found == null ? ", none found" : ""));
+            if (found != null) {
+                mc.world.setSpawnPoint(found);
+                PlayerEntity p = mc.player;
+                p.setPositionAndAngles(found.x + 0.5, found.y + 0.01, found.z + 0.5, p.yaw, 0.0F);
+                p.velocityX = p.velocityY = p.velocityZ = 0.0;
+                p.fallDistance = 0.0F;
+            }
+            ((MinecraftAccessor) mc).endpractice$prepareWorld("Building terrain");
+        } finally {
+            preparing = false;
+        }
+        mc.openScreen(null);
+        return found;
+    }
+
+    /** The pit sandbox's world: the same kind of flat spot as an endgame one. */
+    static void makeSandboxWorld(Minecraft mc) {
+        mc.setWorld(null);
+        mc.interactionManager = new SurvivalInteractionManager(mc);
+        preparing = true;
+        try {
+            if (PitSandbox.flatGen) makeFlatWorld(mc);
+            else makeWorld(mc);
+        } finally {
+            preparing = false;
+        }
+        mc.openScreen(null);
+    }
+
+    /** The pit sandbox as a flat sand desert, spawn at 0 0. */
+    private static void makeFlatWorld(Minecraft mc) {
+        mc.getWorldStorageSource().delete(FOLDER);
+        EndPractice.resetBiomeArrayPool();
+        EndPractice.skipOverworldPrep = true;
+        try {
+            mc.startGame(FOLDER, "Endgame Practice", Versions.newWorldSettings(new Random().nextLong(), false));
+        } finally {
+            EndPractice.skipOverworldPrep = false;
+        }
+        Vec3i spawn = new Vec3i(0, PitSandbox.FLAT_TOP + 1, 0);
+        mc.world.setSpawnPoint(spawn);
+        PlayerEntity p = mc.player;
+        p.setPositionAndAngles(0.5, spawn.y + p.eyeHeight + 0.1, 0.5, p.yaw, 0.0F);
+        p.velocityX = p.velocityY = p.velocityZ = 0.0;
+        p.fallDistance = 0.0F;
+        EndPractice.log("flat desert sandbox");
+        ((MinecraftAccessor) mc).endpractice$prepareWorld("Building terrain");
     }
 
     private static final List<Biome> FLAT_BIOMES = Arrays.asList(Biome.PLAINS, Biome.DESERT);
@@ -857,6 +933,8 @@ public final class Endgame {
             if (d != null) lines.add("Dragon " + Math.max(0, d.getHealth()) + " / 200   Crystals " + EndPractice.crystals(mc));
             String last = BedReport.lastShort();
             if (last != null) lines.add(last);
+            String cue = DoubleBed.hud(mc);
+            if (cue != null) lines.add(cue);
         }
         return lines;
     }

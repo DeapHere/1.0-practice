@@ -19,5 +19,6 @@ public abstract class WorldRendererMixin {
     @Inject(method = "renderEntities", at = @At("TAIL"), require = 0)
     private void endpractice$pitLine(Vec3d camera, Culler culler, float tickDelta, CallbackInfo ci) {
         PitPlanner.render(this.minecraft, tickDelta);
+        endpractice.PitSandbox.render(this.minecraft, tickDelta);
     }
 }

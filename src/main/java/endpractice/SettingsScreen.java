@@ -95,24 +95,71 @@ public final class SettingsScreen extends Screen {
         key("Enclosed spawner", () -> c.keyBlazeEnclosed, v -> c.keyBlazeEnclosed = v);
         key("Eye throw", () -> c.keyEyeTrainer, v -> c.keyEyeTrainer = v);
         key("Guess stronghold here", () -> c.keyGuess, v -> c.keyGuess = v);
+        key("Pit sandbox", () -> c.keyPitSandbox, v -> c.keyPitSandbox = v);
+        key("Overworld", () -> c.keyOverworld, v -> c.keyOverworld = v);
         key("Save kit (press twice)", () -> c.keySaveKit, v -> c.keySaveKit = v);
         key("Plan pit from here", () -> c.keyPitPlan, v -> c.keyPitPlan = v);
+        key("Double beds (and charge now)", () -> c.keyCharge, v -> c.keyCharge = v);
+        key("Saved pits menu (sandbox)", () -> c.keyPitMenu, v -> c.keyPitMenu = v);
+        key("Spawn an enderman", () -> c.keyEnderman, v -> c.keyEnderman = v);
+        key("HUD on/off", () -> c.keyHud, v -> c.keyHud = v);
         action("Set all hotkeys to NONE", "Turns every hotkey off, for menu only", () -> {
             c.keyStart = c.keyEndgame = c.keyTower = c.keyStronghold = c.keyCrystals = c.keyRandomCrystals = Keyboard.KEY_NONE;
-            c.keyBlazeOpen = c.keyBlazeEnclosed = c.keySaveKit = c.keyPitPlan = c.keyEyeTrainer = c.keyGuess = Keyboard.KEY_NONE;
+            c.keyBlazeOpen = c.keyBlazeEnclosed = c.keySaveKit = c.keyPitPlan = c.keyEyeTrainer = c.keyGuess = c.keyPitSandbox = c.keyOverworld = c.keyCharge = c.keyPitMenu = c.keyEnderman = c.keyHud = Keyboard.KEY_NONE;
         });
         action("Reset hotkeys", "Back to the default keys", () -> {
             c.keyStart = d.keyStart; c.keyEndgame = d.keyEndgame; c.keyTower = d.keyTower; c.keyStronghold = d.keyStronghold;
             c.keyCrystals = d.keyCrystals; c.keyRandomCrystals = d.keyRandomCrystals; c.keyBlazeOpen = d.keyBlazeOpen;
             c.keyBlazeEnclosed = d.keyBlazeEnclosed; c.keySaveKit = d.keySaveKit; c.keyPitPlan = d.keyPitPlan;
-            c.keyEyeTrainer = d.keyEyeTrainer; c.keyGuess = d.keyGuess;
+            c.keyEyeTrainer = d.keyEyeTrainer; c.keyGuess = d.keyGuess; c.keyPitSandbox = d.keyPitSandbox; c.keyOverworld = d.keyOverworld; c.keyCharge = d.keyCharge;
+            c.keyPitMenu = d.keyPitMenu; c.keyEnderman = d.keyEnderman; c.keyHud = d.keyHud;
         });
+
+        heading("Overworld");
+        list("Iron for the iron split", "How much iron the iron split waits for (iron already made into a bucket or flint and steel counts)",
+                new int[]{3, 4, 5, 6, 7, 8, 9, 10, 12}, () -> c.overworldIron, v -> c.overworldIron = v);
+        list("Leaves to finish", "Leaves you need to be holding before stepping into the portal finishes the run (any kind)",
+                new int[]{0, 32, 64, 96, 128, 160, 192, 256}, () -> c.overworldLeaves, v -> c.overworldLeaves = v);
+        list("Logs to finish", "Logs you need to have had over the run (the 4 you spawn with count, and crafting them doesn't take any off)",
+                new int[]{0, 4, 8, 10, 12, 14, 16, 20, 24}, () -> c.overworldLogs, v -> c.overworldLogs = v);
+
+        heading("Pit sandbox");
+        bool("Mob paths", "Draws the path every hostile mob within 64 blocks is walking, coloured by mob (purple endermen), and a thin red line to whatever it's after",
+                () -> c.sbPaths, v -> c.sbPaths = v);
+        bool("Enderman teleports", "A pink line from where an enderman teleported from to where it landed, for 10 seconds",
+                () -> c.sbTeleports, v -> c.sbTeleports = v);
+        bool("New spawns", "A coloured post where each monster spawned, for 30 seconds",
+                () -> c.sbSpawns, v -> c.sbSpawns = v);
+        bool("Spawnable blocks", "Crosses on the blocks within 24 of you that monsters can spawn on right now: purple where an enderman fits (3 high)",
+                () -> c.sbSpawnable, v -> c.sbSpawnable = v);
+        bool("Spawn rings", "Two faint dashed rings round you: nothing spawns inside 24 (green), endermen past 32 can despawn (yellow)",
+                () -> c.sbRings, v -> c.sbRings = v);
+        bool("Overlays in normal worlds", "The overlays above, /test and /pit in your own worlds too, not just the sandbox (/sandbox on|off)",
+                () -> c.sbInWorlds, v -> c.sbInWorlds = v);
+        link("Sandbox HUD...", "Pick which lines the pit sandbox HUD shows, and their order",
+                () -> this.minecraft.openScreen(new HudEditorScreen(this, c)));
+        bool("Flat desert", "The sandbox is flat sand in every direction (a desert, no trees, caves or lakes), so tests compare pits, not terrain. Off: a random world with a flat plains or desert spawn",
+                () -> c.sbFlat, v -> c.sbFlat = v);
+        bool("No animals", "Clears animals and squid out of the sandbox, since they only cost ticks there (monsters are what the pit is for)",
+                () -> c.sbNoAnimals, v -> c.sbNoAnimals = v);
 
         heading("Commands");
         bool("Singleplayer commands", "T opens chat in singleplayer, and /gamemode, /tp, /time and more work. /help lists them",
                 () -> c.commands, v -> c.commands = v);
-        bool("Eye trainer: coaching", "Eye bug warnings, where two throws cross, whether they went to the same stronghold, and where the other two strongholds can be",
+        bool("Eye trainer: coaching", "Where two throws cross, eye bug warnings (with vanilla eye targeting), whether they went to the same stronghold, and where the other two strongholds can be",
                 () -> c.eyeCoaching, v -> c.eyeCoaching = v);
+        bool("Vanilla eye targeting", "Off: in practice, eyes always fly to the closest portal room. On: where 1.0 sends them, eye bug and all, like a real run",
+                () -> c.vanillaEyes, v -> c.vanillaEyes = v);
+        bool("Eye trainer: Keima method", "After your second eye: how many pixels did the crosshair move? Line up with eye 1, jump sideways 4 times, throw again. Distance is about " + EyeTrainer.KEIMA_C + " / pixels",
+                () -> c.keima, v -> c.keima = v);
+        bool("Keima: use my calibrated constant", "On: your own constant from your tries (the median of your last 10) once you have 5. Off: the fixed one below. Chat shows the estimate with both either way. /keima calibrate runs 5 guided tries",
+                () -> c.keimaCalibrated, v -> c.keimaCalibrated = v);
+        int[] fixed = new int[33];
+        for (int i = 0; i < fixed.length; i++) fixed[i] = 2800 + i * 50;
+        list("Keima: fixed constant", "Distance ~ this / pixels. 3190 is 1.0's (eye 12 blocks out, 4 sideways jumps 8.3 blocks). /keima fixed <n> sets any value",
+                fixed, () -> c.keimaFixed, v -> c.keimaFixed = v);
+        bool("Eye trainer: Keima offset", "Shows the true pixel offset of your second eye and how far you moved sideways, for learning",
+                () -> c.keimaOverlay, v -> c.keimaOverlay = v);
         bool("Eye trainer: eye angles", "The eye throw trainer says the angle each eye flew at, in Minecraft's own yaw (like F3 in later versions)",
                 () -> c.eyeAngles, v -> c.eyeAngles = v);
 
@@ -121,6 +168,20 @@ public final class SettingsScreen extends Screen {
         bool("Bed report", "The chat report after every bed near the dragon", () -> c.bedReport, v -> c.bedReport = v);
         list("Bed report range", "Only beds this many blocks or closer to the dragon's head get a report",
                 new int[]{8, 10, 12, 16, 20, 24, 32, 48}, () -> (int) c.bedReportRange, v -> c.bedReportRange = v);
+        bool("Double bed cue", "After a bed hits, the HUD counts the 10 ticks until a second bed counts in full",
+                () -> c.doubleBedCue, v -> c.doubleBedCue = v);
+        list("Double beds: start distance", "How far out the dragon starts. Further gives you longer to set up (96: about 4 s), but needs a bit more height to reach you",
+                new int[]{64, 80, 96, 112, 128, 160}, () -> c.doubleBedDistance, v -> c.doubleBedDistance = v);
+        list("Double beds: start height", "How high up the dragon starts (also for /charge). It only drops about 0.6 blocks per block it flies: 15 suits 64 out, 20 suits 96, 25 to 35 suits 128. Too high and it flies over you",
+                new int[]{8, 10, 12, 15, 17, 20, 22, 25, 30, 35, 40}, () -> c.chargeHeight, v -> c.chargeHeight = v);
+        list("Double beds: height spread", "Each charge starts this much higher or lower at random, so they're not all the same",
+                new int[]{0, 1, 2, 3, 5}, () -> c.doubleBedSpread, v -> c.doubleBedSpread = v);
+        list("Double beds: countdown", "Seconds before each charge, to look where it should come from",
+                new int[]{1, 2, 3, 4, 5, 8}, () -> c.doubleBedCountdown, v -> c.doubleBedCountdown = v);
+        bool("Double beds: new spot every rep", "Off: a new spot after each double (and when you press the key). On: after every rep",
+                () -> c.doubleBedMoveEveryRep, v -> c.doubleBedMoveEveryRep = v);
+        bool("Double beds: can't be hurt", "Off: your own beds hurt you like in a real fight, and dying starts double bed practice again",
+                () -> c.doubleBedProtect, v -> c.doubleBedProtect = v);
 
         heading("Endgame and blaze");
         list("Blaze rods", "Blaze practice ends when you have this many rods (PBs are kept for each number)",

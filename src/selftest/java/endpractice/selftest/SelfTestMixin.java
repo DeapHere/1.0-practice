@@ -19,7 +19,7 @@ public abstract class SelfTestMixin {
     @Inject(method = "tick", at = @At("TAIL"))
     private void selftest(CallbackInfo ci) {
         Minecraft mc = (Minecraft) (Object) this;
-        if (Integer.getInteger("endpractice.stress", 0) > 0 || Integer.getInteger("endpractice.endgame", 0) > 0 || Integer.getInteger("endpractice.screens", 0) > 0 || Integer.getInteger("endpractice.crystals", 0) > 0 || Integer.getInteger("endpractice.randomcrystals", 0) > 0 || Integer.getInteger("endpractice.outline", 0) > 0 || Integer.getInteger("endpractice.blaze", 0) > 0 || Integer.getInteger("endpractice.eyes", 0) > 0) return;
+        if (Integer.getInteger("endpractice.stress", 0) > 0 || Integer.getInteger("endpractice.endgame", 0) > 0 || Integer.getInteger("endpractice.screens", 0) > 0 || Integer.getInteger("endpractice.crystals", 0) > 0 || Integer.getInteger("endpractice.randomcrystals", 0) > 0 || Integer.getInteger("endpractice.outline", 0) > 0 || Integer.getInteger("endpractice.blaze", 0) > 0 || Integer.getInteger("endpractice.eyes", 0) > 0 || Integer.getInteger("endpractice.sandbox", 0) > 0 || Integer.getInteger("endpractice.overworld", 0) > 0 || Integer.getInteger("endpractice.doublebed", 0) != 0) return;
         if (++wait < 40) return;
         if (step == 0 && mc.screen instanceof TitleScreen) {
             log("title screen: starting an attempt");

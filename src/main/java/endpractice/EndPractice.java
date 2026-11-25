@@ -1,5 +1,7 @@
 package endpractice;
 
+import endpractice.compat.RankedCompat;
+
 import endpractice.compat.Versions;
 import endpractice.mixin.IntCacheAccessor;
 import java.io.File;
@@ -27,7 +29,7 @@ import org.lwjgl.input.Keyboard;
  */
 public final class EndPractice {
     public static final String FOLDER = "EndPractice";
-    public static final String VERSION = "1.0.0";
+    public static final String VERSION = "1.3";
 
     public static Config cfg;
     public static Minecraft mc;
@@ -77,22 +79,48 @@ public final class EndPractice {
 
     /** A practice world of either mode is loaded or being made. */
     public static boolean inPracticeWorld() {
-        return active || Endgame.isActive() || Endgame.preparing || CrystalTrainer.isActive() || BlazePractice.isActive() || EyeTrainer.isActive()
-                || BlazePractice.preparing || skipOverworldPrep;
+        return active || DoubleBed.isActive() || Endgame.isActive() || Endgame.preparing || CrystalTrainer.isActive() || BlazePractice.isActive() || EyeTrainer.isActive()
+                || PitSandbox.isActive() || Overworld.isActive() || BlazePractice.preparing || skipOverworldPrep;
     }
 
     /** End fight tracking (bed report, dragon history) applies: End fight practice, or the End in an endgame run. */
     static boolean endFight() {
-        return active || (mc != null && Endgame.inEndFight(mc));
+        return active || DoubleBed.isActive() || (mc != null && Endgame.inEndFight(mc));
     }
 
     private static boolean pitWasDown;
+    private static boolean chargeWasDown;
     private static boolean crystalsQueued;
     private static boolean crystalsRandom;
     private static boolean crystalsWasDown;
     private static boolean randomCrystalsWasDown;
 
     private static boolean eyesQueued, eyesWasDown, guessWasDown;
+
+    private static boolean sandboxQueued, sandboxWasDown, overworldQueued, overworldWasDown, pitMenuWasDown, endermanWasDown, hudWasDown;
+
+    static void toggleHud(Minecraft mc) {
+        cfg.hud = !cfg.hud;
+        cfg.save();
+        chat(mc, "§7HUD " + (cfg.hud ? "on" : "off") + " (" + Keyboard.getKeyName(cfg.keyHud) + " or /hud)§r");
+    }
+
+    /** Overworld practice, from the menu or its key. */
+    public static void queueOverworld() {
+        overworldQueued = true;
+    }
+
+    /** Pit sandbox, from the menu, its key or /sandbox new. */
+    public static void queueSandbox() {
+        sandboxQueued = true;
+    }
+
+    private static boolean doubleQueued;
+
+    /** Double bed practice, from the menu or its key. */
+    public static void queueDoubleBeds() {
+        doubleQueued = true;
+    }
 
     /** Eye throw trainer, from the menu or its key. */
     public static void queueEyes() {
@@ -148,6 +176,11 @@ public final class EndPractice {
     public static void tickHead(Minecraft mc) {
         EndPractice.mc = mc;
         init();
+        if (RankedCompat.busy()) {
+            rankedLock(mc);
+            return;
+        }
+        rankedLocked = false;
         boolean down = isDown(cfg.keyStart);
         // in game the key only restarts practice, so it can never quit a normal world
         if (down && !startWasDown && mc.screen == null && active) startQueued = true;
@@ -181,17 +214,43 @@ public final class EndPractice {
         if (gd && !guessWasDown && mc.screen == null && EyeTrainer.isActive() && mc.player != null)
             EyeTrainer.guess(mc, (int) Math.floor(mc.player.x), (int) Math.floor(mc.player.z));
         guessWasDown = gd;
+        boolean sd = isDown(cfg.keyPitSandbox);
+        if (sd && !sandboxWasDown && mc.screen == null && PitSandbox.isActive()) queueSandbox();
+        sandboxWasDown = sd;
+        boolean od = isDown(cfg.keyOverworld);
+        if (od && !overworldWasDown && mc.screen == null && Overworld.isActive()) queueOverworld();
+        overworldWasDown = od;
         Commands.tick(mc);
 
         boolean pitDown = isDown(cfg.keyPitPlan);
-        if (pitDown && !pitWasDown && mc.screen == null && Endgame.showPitPlan() && mc.player != null) {
+        if (pitDown && !pitWasDown && mc.screen == null && (Endgame.showPitPlan() || PitSandbox.tracking(mc)) && mc.player != null) {
             PitPlanner.plan(mc, (int) Math.floor(mc.player.x), (int) Math.floor(mc.player.z), false);
             chat(mc, "Planning the pit from here...");
         }
         pitWasDown = pitDown;
 
+        boolean hudDown = isDown(cfg.keyHud);
+        if (hudDown && !hudWasDown && mc.screen == null && mc.player != null) toggleHud(mc);
+        hudWasDown = hudDown;
+        boolean menuDown = isDown(cfg.keyPitMenu);
+        if (menuDown && !pitMenuWasDown && mc.screen == null && PitSandbox.isActive()) mc.openScreen(new PitMenuScreen());
+        pitMenuWasDown = menuDown;
+        boolean enderDown = isDown(cfg.keyEnderman);
+        if (enderDown && !endermanWasDown && mc.screen == null && PitSandbox.tracking(mc)) {
+            double[] at = PitSandbox.summonSpot(mc);
+            if (PitSandbox.summon(mc, "Enderman", 1, at[0], at[1], at[2]) > 0) {
+                Commands.cheat(mc);
+                chat(mc, "§7Enderman at " + (int) Math.floor(at[0]) + " " + (int) Math.floor(at[1]) + " " + (int) Math.floor(at[2]) + "§r");
+            }
+        }
+        endermanWasDown = enderDown;
+
+        boolean chargeDown = isDown(cfg.keyCharge);
+        if (chargeDown && !chargeWasDown && mc.screen == null && DoubleBed.isActive()) DoubleBed.skip(mc);
+        chargeWasDown = chargeDown;
+
         boolean kitDown = isDown(cfg.keySaveKit);
-        if (kitDown && !kitWasDown && mc.screen == null && (active || Endgame.isActive() || BlazePractice.isActive() || EyeTrainer.isActive()) && mc.player != null) {
+        if (kitDown && !kitWasDown && mc.screen == null && (active || Endgame.isActive() || BlazePractice.isActive() || EyeTrainer.isActive() || Overworld.isActive() || DoubleBed.isActive()) && mc.player != null) {
             // two presses within a second, so a stray press never overwrites the kit
             long now = System.currentTimeMillis();
             if (now - kitFirstPress < 1000) {
@@ -205,9 +264,87 @@ public final class EndPractice {
         kitWasDown = kitDown;
     }
 
+    private static boolean rankedLocked;
+
+    /** Oldschool Ranked is queued, in a room or in a match: every practice mode stops and nothing of ours runs. */
+    private static void rankedLock(Minecraft mc) {
+        startQueued = crystalsQueued = eyesQueued = sandboxQueued = overworldQueued = doubleQueued = false;
+        endgameQueued = null;
+        blazeQueued = null;
+        if (!rankedLocked) {
+            rankedLocked = true;
+            log("Oldschool Ranked is active: practice is off until it's done");
+            abandonIfRunning();
+            Endgame.stop();
+            CrystalTrainer.stop();
+            DoubleBed.stop();
+            BlazePractice.stop();
+            EyeTrainer.stop();
+            PitSandbox.stop();
+            Overworld.stop();
+            PitPlanner.clear();
+        }
+        Commands.rankedLock(mc);
+    }
+
     /** End of every client tick. */
     public static void tickTail(Minecraft mc) {
-        if (startQueued || blazeQueued != null || crystalsQueued || endgameQueued != null || eyesQueued) Commands.cheated = false;
+        if (RankedCompat.busy()) return;
+        if (startQueued || blazeQueued != null || crystalsQueued || endgameQueued != null || eyesQueued || sandboxQueued || overworldQueued || doubleQueued) Commands.cheated = false;
+        if (startQueued || blazeQueued != null || crystalsQueued || endgameQueued != null || eyesQueued || sandboxQueued || overworldQueued || doubleQueued) {
+            PitSandbox.stop();
+            Overworld.stop();
+        }
+        if (doubleQueued) {
+            doubleQueued = false;
+            overworldQueued = false;
+            sandboxQueued = false;
+            eyesQueued = false;
+            startQueued = false;
+            endgameQueued = null;
+            crystalsQueued = false;
+            blazeQueued = null;
+            abandonIfRunning();
+            Endgame.stop();
+            CrystalTrainer.stop();
+            BlazePractice.stop();
+            EyeTrainer.stop();
+            DoubleBed.start(mc);
+            return;
+        }
+        if (overworldQueued) {
+            overworldQueued = false;
+            sandboxQueued = false;
+            eyesQueued = false;
+            startQueued = false;
+            endgameQueued = null;
+            crystalsQueued = false;
+            blazeQueued = null;
+            abandonIfRunning();
+            Endgame.stop();
+            CrystalTrainer.stop();
+            DoubleBed.stop();
+            BlazePractice.stop();
+            EyeTrainer.stop();
+            Overworld.start(mc);
+            return;
+        }
+        if (sandboxQueued) {
+            sandboxQueued = false;
+            eyesQueued = false;
+            startQueued = false;
+            endgameQueued = null;
+            crystalsQueued = false;
+            blazeQueued = null;
+            abandonIfRunning();
+            Endgame.stop();
+            CrystalTrainer.stop();
+            DoubleBed.stop();
+            BlazePractice.stop();
+            EyeTrainer.stop();
+            PitSandbox.start(mc);
+            return;
+        }
         if (eyesQueued) {
             eyesQueued = false;
             startQueued = false;
@@ -217,6 +354,7 @@ public final class EndPractice {
             abandonIfRunning();
             Endgame.stop();
             CrystalTrainer.stop();
+            DoubleBed.stop();
             BlazePractice.stop();
             EyeTrainer.start(mc);
             return;
@@ -229,6 +367,7 @@ public final class EndPractice {
             blazeQueued = null;
             Endgame.stop();
             CrystalTrainer.stop();
+            DoubleBed.stop();
             BlazePractice.stop();
             start(mc);
             return;
@@ -241,6 +380,7 @@ public final class EndPractice {
             abandonIfRunning();
             Endgame.stop();
             CrystalTrainer.stop();
+            DoubleBed.stop();
             EyeTrainer.stop();
             BlazePractice.start(mc, enclosed);
             return;
@@ -249,6 +389,7 @@ public final class EndPractice {
             crystalsQueued = false;
             endgameQueued = null;
             abandonIfRunning();
+            DoubleBed.stop();
             Endgame.stop();
             BlazePractice.stop();
             EyeTrainer.stop();
@@ -260,6 +401,7 @@ public final class EndPractice {
             endgameQueued = null;
             abandonIfRunning();
             CrystalTrainer.stop();
+            DoubleBed.stop();
             BlazePractice.stop();
             EyeTrainer.stop();
             Endgame.start(mc, m);
@@ -270,8 +412,26 @@ public final class EndPractice {
             abandonIfRunning();
             Endgame.stop();
             CrystalTrainer.stop();
+            DoubleBed.stop();
             BlazePractice.stop();
             EyeTrainer.stop();
+            PitSandbox.stop();
+            Overworld.stop();
+            return;
+        }
+        if (DoubleBed.isActive()) {
+            DoubleBed.tick(mc);
+            return;
+        }
+        if (Overworld.isActive()) {
+            Overworld.tick(mc);
+            return;
+        }
+        if (PitSandbox.isActive()) {
+            PitSandbox.tick(mc);
+            long so = System.nanoTime();
+            SpawnOverlay.tick(mc);
+            PitSandbox.prof[2] += System.nanoTime() - so;
             return;
         }
         if (EyeTrainer.isActive()) {
@@ -289,6 +449,11 @@ public final class EndPractice {
         if (Endgame.isActive()) {
             SpawnOverlay.tick(mc);
             Endgame.tick(mc);
+            return;
+        }
+        if (!active && !inPracticeWorld()) {
+            // a normal world: /test, /pit and the overlays (when on) still work
+            PitSandbox.tick(mc);
             return;
         }
         if (!active || mc.player == null) return;
@@ -493,14 +658,20 @@ public final class EndPractice {
     /** Lines for the top left corner (F3 hides them). */
     /** Top right corner: the spawn overlay. */
     public static List<String> hudRight(Minecraft mc) {
+        if (RankedCompat.busy()) return new ArrayList<>();
         return SpawnOverlay.hud(mc);
     }
 
     public static List<String> hud(Minecraft mc) {
+        if (RankedCompat.busy()) return new ArrayList<>();
         if (Endgame.isActive()) return Endgame.hud(mc);
         if (CrystalTrainer.isActive()) return CrystalTrainer.hud(mc);
         if (BlazePractice.isActive()) return BlazePractice.hud(mc);
         if (EyeTrainer.isActive()) return EyeTrainer.hud(mc);
+        if (PitSandbox.isActive()) return PitSandbox.hud(mc);
+        if (Overworld.isActive()) return Overworld.hud(mc);
+        if (DoubleBed.isActive()) return DoubleBed.modeHud(mc);
+        if (!active && !inPracticeWorld()) return PitSandbox.hud(mc);
         List<String> lines = new ArrayList<>();
         if (!active || mc.world == null) return lines;
         long ticks = (endTime >= 0 ? endTime : mc.world.getTime()) - startTime;
@@ -514,6 +685,8 @@ public final class EndPractice {
         if (pb >= 0) lines.add("PB " + time(pb));
         String last = BedReport.lastShort();
         if (last != null) lines.add(last);
+        String cue = DoubleBed.hud(mc);
+        if (cue != null) lines.add(cue);
         return lines;
     }
 
@@ -555,6 +728,12 @@ public final class EndPractice {
         if (Endgame.isActive() && Endgame.mode() == Endgame.Mode.STRONGHOLD) {
             cfg.strongholdKit = sb.toString();
             which = "Stronghold kit saved. Every new stronghold attempt";
+        } else if (DoubleBed.isActive()) {
+            cfg.doubleBedKit = sb.toString();
+            which = "Double beds kit saved. It's topped up to this every rep";
+        } else if (Overworld.isActive()) {
+            cfg.overworldKit = sb.toString();
+            which = "Overworld kit saved. Every new overworld attempt";
         } else if (EyeTrainer.isActive()) {
             cfg.eyeKit = sb.toString();
             which = "Eye throw kit saved. Every new eye trainer attempt";

@@ -34,10 +34,40 @@ public final class Config {
     /** Eye throw trainer, and its guess key (guess the stronghold is where you stand). */
     public int keyEyeTrainer = Keyboard.KEY_Y;
     public int keyGuess = Keyboard.KEY_G;
+    /** Pit sandbox: a night world in creative to try out pit designs. */
+    public int keyPitSandbox = Keyboard.KEY_H;
+    /** Overworld practice: its key, the kit you spawn with, and how much iron the iron split wants. */
+    public int keyOverworld = Keyboard.KEY_U;
+    public String overworldKit = "0:17:4";
+    /** Double bed practice: iron pickaxe, a stack of cobblestone, 7 beds. Topped up to this every rep. */
+    public String doubleBedKit = "0:257:1,1:4:64,2:355:1,3:355:1,4:355:1,5:355:1,6:355:1,7:355:1,8:355:1";
+    public int overworldIron = 6;
+    /** Overworld: leaves you must hold and logs you must have had before the portal finishes the run. */
+    public int overworldLeaves = 128, overworldLogs = 12;
+    /** Pit sandbox overlays: mob paths, enderman teleports, new spawns, blocks monsters can spawn on, spawn/despawn rings. */
+    public boolean sbPaths = true, sbTeleports = true, sbSpawns = true, sbSpawnable = false, sbRings = true;
+    /** Pit sandbox: clears out animals and squid, which only cost ticks there. */
+    public boolean sbNoAnimals = true;
+    /** The pit sandbox is a flat sand desert instead of a random world. */
+    public boolean sbFlat = true;
+    /** The pit sandbox overlays in normal (non-practice) worlds too. */
+    public boolean sbInWorlds = false;
+    /** The pit sandbox HUD: its pieces in order, "-" in front of the ones that are off (the HUD editor sets it). */
+    public String sbHud = "title,test,surface,kills,pearls,-spawned,-loaded,-light,planner";
     /** Eye throw trainer: say each eye's angle in chat. */
     public boolean eyeAngles = false;
     /** Eye throw trainer: after each eye, eye bug warnings, where the throws cross and where the other strongholds can be. */
     public boolean eyeCoaching = true;
+    /** Eyes go where 1.0 sends them (eye bug and all) instead of to the closest portal room. */
+    public boolean vanillaEyes = false;
+    /** The Keima trainer: after the second throw, how many pixels did the crosshair move. */
+    public boolean keima = true;
+    /** Shows the true pixel offset of the second eye, for learning. */
+    public boolean keimaOverlay = false;
+    /** Use your calibrated Keima constant (once there are 5 tries), not the fixed one. */
+    public boolean keimaCalibrated = true;
+    /** The fixed Keima constant: 1.0's, 32 x 12 blocks x 8.3 blocks for 4 sideways jumps. */
+    public int keimaFixed = 3190;
     /** Singleplayer chat and commands (/gamemode and the rest). */
     public boolean commands = true;
     /**
@@ -95,6 +125,24 @@ public final class Config {
     public int pitDistance = 205;
     /** Plans the pit again from where you stand. */
     public int keyPitPlan = Keyboard.KEY_J;
+    /** Double bed practice; in it, charges straight away. */
+    public int keyCharge = Keyboard.KEY_V;
+    /** Pit sandbox: the saved pits menu, and an enderman where you're looking (that one in normal worlds too). */
+    public int keyPitMenu = Keyboard.KEY_X;
+    public int keyEnderman = Keyboard.KEY_M;
+    /** Turns the top left HUD on and off. */
+    public int keyHud = Keyboard.KEY_Z;
+    /** Double bed practice: how high the dragon starts, give or take 2 each rep. */
+    public int chargeHeight = 20;
+    /** Double bed practice: how far out the dragon starts, the height give or take, the countdown, and moving every rep. */
+    public int doubleBedDistance = 96;
+    public int doubleBedSpread = 2;
+    public int doubleBedCountdown = 3;
+    public boolean doubleBedMoveEveryRep = false;
+    /** Double bed practice: you can't be hurt (the beds' own blasts don't end a rep). */
+    public boolean doubleBedProtect = true;
+    /** The HUD line after a bed hits saying when a second bed counts in full. */
+    public boolean doubleBedCue = true;
     public boolean hud = true;
     public boolean bedReport = true;
     /** Shows the report for beds that did no damage to the dragon too, while it was within this many blocks. */
@@ -108,6 +156,14 @@ public final class Config {
     private static final String OLD_STRONGHOLD_KIT_021 = "0:4:16,1:18:64,3:333:1,7:326:1,8:381:14," + "10:274:1,11:275:1,12:273:1,13:272:1,14:364:16,15:5:30,16:287:3,17:288:5,18:318:5,19:280:8,20:368:1,21:35:21,23:58:1,24:259:1";
 
     private File file;
+
+    private static int intProp(java.util.Properties p, String k, int def) {
+        try {
+            return Integer.parseInt(p.getProperty(k, String.valueOf(def)).trim());
+        } catch (NumberFormatException e) {
+            return def;
+        }
+    }
 
     static Config load() {
         Config c = new Config();
@@ -133,8 +189,32 @@ public final class Config {
         c.keyBlazeEnclosed = key(p, "keyBlazeEnclosed", c.keyBlazeEnclosed);
         c.keyEyeTrainer = key(p, "keyEyeTrainer", c.keyEyeTrainer);
         c.keyGuess = key(p, "keyGuess", c.keyGuess);
+        c.keyPitSandbox = key(p, "keyPitSandbox", c.keyPitSandbox);
+        c.keyOverworld = key(p, "keyOverworld", c.keyOverworld);
+        c.overworldKit = p.getProperty("overworldKit", c.overworldKit);
+        c.doubleBedKit = p.getProperty("doubleBedKit", c.doubleBedKit);
+        c.overworldIron = (int) num(p, "overworldIron", c.overworldIron);
+        c.overworldLeaves = (int) num(p, "overworldLeaves", c.overworldLeaves);
+        c.overworldLogs = (int) num(p, "overworldLogs", c.overworldLogs);
+        c.sbPaths = bool(p, "sbPaths", c.sbPaths);
+        c.sbTeleports = bool(p, "sbTeleports", c.sbTeleports);
+        c.sbSpawns = bool(p, "sbSpawns", c.sbSpawns);
+        c.sbSpawnable = bool(p, "sbSpawnable", c.sbSpawnable);
+        c.sbRings = bool(p, "sbRings", c.sbRings);
+        c.sbNoAnimals = bool(p, "sbNoAnimals", c.sbNoAnimals);
+        c.sbFlat = bool(p, "sbFlat", c.sbFlat);
+        c.sbInWorlds = bool(p, "sbInWorlds", c.sbInWorlds);
+        c.sbHud = p.getProperty("sbHud", c.sbHud).trim();
         c.eyeAngles = bool(p, "eyeAngles", c.eyeAngles);
         c.eyeCoaching = bool(p, "eyeCoaching", c.eyeCoaching);
+        c.vanillaEyes = bool(p, "vanillaEyes", c.vanillaEyes);
+        c.keima = bool(p, "keima", c.keima);
+        c.keimaOverlay = bool(p, "keimaOverlay", c.keimaOverlay);
+        c.keimaCalibrated = bool(p, "keimaCalibrated", c.keimaCalibrated);
+        try {
+            c.keimaFixed = Math.max(500, Math.min(20000, Integer.parseInt(p.getProperty("keimaFixed", String.valueOf(c.keimaFixed)).trim())));
+        } catch (NumberFormatException ignored) {
+        }
         c.commands = bool(p, "commands", c.commands);
         c.blazeRods = (int) num(p, "blazeRods", c.blazeRods);
         if (c.blazeRods != 6 && c.blazeRods != 7) c.blazeRods = 7;
@@ -161,6 +241,20 @@ public final class Config {
         c.pitPlanner = bool(p, "pitPlanner", c.pitPlanner);
         c.pitDistance = (int) num(p, "pitDistance", c.pitDistance);
         c.keyPitPlan = key(p, "keyPitPlan", c.keyPitPlan);
+        c.keyCharge = key(p, "keyCharge", c.keyCharge);
+        c.keyPitMenu = key(p, "keyPitMenu", c.keyPitMenu);
+        c.keyEnderman = key(p, "keyEnderman", c.keyEnderman);
+        c.keyHud = key(p, "keyHud", c.keyHud);
+        c.doubleBedCue = bool(p, "doubleBedCue", c.doubleBedCue);
+        c.doubleBedProtect = bool(p, "doubleBedProtect", c.doubleBedProtect);
+        c.doubleBedMoveEveryRep = bool(p, "doubleBedMoveEveryRep", c.doubleBedMoveEveryRep);
+        c.doubleBedDistance = intProp(p, "doubleBedDistance", c.doubleBedDistance);
+        c.doubleBedSpread = intProp(p, "doubleBedSpread", c.doubleBedSpread);
+        c.doubleBedCountdown = intProp(p, "doubleBedCountdown", c.doubleBedCountdown);
+        try {
+            c.chargeHeight = Integer.parseInt(p.getProperty("doubleBedStartHeight", String.valueOf(c.chargeHeight)).trim());
+        } catch (NumberFormatException ignored) {
+        }
         c.hud = bool(p, "hud", c.hud);
         c.bedReport = bool(p, "bedReport", c.bedReport);
         try {
@@ -186,8 +280,29 @@ public final class Config {
         p.setProperty("keyBlazeEnclosed", keyName(keyBlazeEnclosed));
         p.setProperty("keyEyeTrainer", keyName(keyEyeTrainer));
         p.setProperty("keyGuess", keyName(keyGuess));
+        p.setProperty("keyPitSandbox", keyName(keyPitSandbox));
+        p.setProperty("keyOverworld", keyName(keyOverworld));
+        p.setProperty("overworldKit", overworldKit);
+        p.setProperty("doubleBedKit", doubleBedKit);
+        p.setProperty("overworldIron", String.valueOf(overworldIron));
+        p.setProperty("overworldLeaves", String.valueOf(overworldLeaves));
+        p.setProperty("overworldLogs", String.valueOf(overworldLogs));
+        p.setProperty("sbPaths", String.valueOf(sbPaths));
+        p.setProperty("sbTeleports", String.valueOf(sbTeleports));
+        p.setProperty("sbSpawns", String.valueOf(sbSpawns));
+        p.setProperty("sbSpawnable", String.valueOf(sbSpawnable));
+        p.setProperty("sbRings", String.valueOf(sbRings));
+        p.setProperty("sbNoAnimals", String.valueOf(sbNoAnimals));
+        p.setProperty("sbFlat", String.valueOf(sbFlat));
+        p.setProperty("sbInWorlds", String.valueOf(sbInWorlds));
+        p.setProperty("sbHud", sbHud);
         p.setProperty("eyeAngles", String.valueOf(eyeAngles));
         p.setProperty("eyeCoaching", String.valueOf(eyeCoaching));
+        p.setProperty("vanillaEyes", String.valueOf(vanillaEyes));
+        p.setProperty("keima", String.valueOf(keima));
+        p.setProperty("keimaOverlay", String.valueOf(keimaOverlay));
+        p.setProperty("keimaCalibrated", String.valueOf(keimaCalibrated));
+        p.setProperty("keimaFixed", String.valueOf(keimaFixed));
         p.setProperty("commands", String.valueOf(commands));
         p.setProperty("blazeRods", String.valueOf(blazeRods));
         p.setProperty("blazeTowerCrafts", String.valueOf(blazeTowerCrafts));
@@ -210,6 +325,17 @@ public final class Config {
         p.setProperty("pitPlanner", String.valueOf(pitPlanner));
         p.setProperty("pitDistance", String.valueOf(pitDistance));
         p.setProperty("keyPitPlan", keyName(keyPitPlan));
+        p.setProperty("keyCharge", keyName(keyCharge));
+        p.setProperty("keyPitMenu", keyName(keyPitMenu));
+        p.setProperty("keyEnderman", keyName(keyEnderman));
+        p.setProperty("keyHud", keyName(keyHud));
+        p.setProperty("doubleBedStartHeight", String.valueOf(chargeHeight));
+        p.setProperty("doubleBedDistance", String.valueOf(doubleBedDistance));
+        p.setProperty("doubleBedSpread", String.valueOf(doubleBedSpread));
+        p.setProperty("doubleBedCountdown", String.valueOf(doubleBedCountdown));
+        p.setProperty("doubleBedMoveEveryRep", String.valueOf(doubleBedMoveEveryRep));
+        p.setProperty("doubleBedProtect", String.valueOf(doubleBedProtect));
+        p.setProperty("doubleBedCue", String.valueOf(doubleBedCue));
         p.setProperty("hud", String.valueOf(hud));
         p.setProperty("bedReport", String.valueOf(bedReport));
         p.setProperty("bedReportRange", String.valueOf(bedReportRange));

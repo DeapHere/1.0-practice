@@ -37,6 +37,21 @@ public final class Commands {
     }
 
     /** Start of every client tick. */
+    /** Ranked is active: out of spectator, normal brightness. */
+    static void rankedLock(Minecraft mc) {
+        if (mc.world == null || mc.player == null) {
+            if (brightDimension != null) restoreBrightness();
+            return;
+        }
+        if (spectating(mc)) {
+            PlayerEntity p = mc.player;
+            mc.interactionManager = new SurvivalInteractionManager(mc);
+            CreativeInteractionManager.setSurvivalMode(p);
+            p.noClip = false;
+        }
+        if (brightDimension != null) fullbright(mc, false);
+    }
+
     static void tick(Minecraft mc) {
         if (mc.world == null || mc.player == null) {
             if (brightDimension != null) restoreBrightness();
@@ -88,6 +103,7 @@ public final class Commands {
 
     /** A chat line typed in singleplayer. */
     public static void onChat(Minecraft mc, String line) {
+        if (endpractice.compat.RankedCompat.busy()) return; // ranked's chat, no commands in rooms or matches
         if (!line.startsWith("/")) {
             EndPractice.chat(mc, "<" + mc.player.name + "> " + line);
             return;
@@ -110,7 +126,8 @@ public final class Commands {
         switch (cmd) {
             case "help": case "?":
                 EndPractice.chat(mc, "§dCommands:§r /gamemode (/gm) s, c or sp, /tp x y z, /time set day|night|<ticks>, /time add <ticks>,");
-                EndPractice.chat(mc, "/weather clear|rain|thunder, /give <id> [count] [damage], /heal, /kill, /pos, /seed, /guess x z (eye trainer)");
+                EndPractice.chat(mc, "/weather clear|rain|thunder, /give <id> [count] [damage], /heal, /kill, /pos, /seed, /guess x z and /keima <pixels> (eye trainer)");
+                EndPractice.chat(mc, "/summon <mob> [count] [x y z], /killall [mob|monsters], /clear (inventory), /ws (world spawn), /time lock|unlock, /mobs, /charge [height] (sends the dragon at you), and in the pit sandbox or your own worlds /pit (save and load designs), /test <name> [minutes], /test stop, /tests, /sandbox on|off");
                 return;
             case "gamemode": case "gm": case "gmode":
                 if (a.length < 2) {
@@ -119,6 +136,12 @@ public final class Commands {
                 }
                 gamemode(mc, a[1].toLowerCase());
                 return;
+            case "charge": {
+                int h = a.length >= 2 ? Integer.parseInt(a[1]) : EndPractice.cfg.chargeHeight;
+                if (DoubleBed.isActive()) DoubleBed.chargeNow(mc, Math.max(0, Math.min(120, h)));
+                else DoubleBed.charge(mc, Math.max(0, Math.min(120, h)));
+                return;
+            }
             case "gms": gamemode(mc, "s"); return;
             case "gmc": gamemode(mc, "c"); return;
             case "gmsp": case "spec": case "spectator": gamemode(mc, "sp"); return;
@@ -127,8 +150,8 @@ public final class Commands {
                     EndPractice.chat(mc, "§c/tp x y z§r (~ for where you are, ~5 for 5 from there)");
                     return;
                 }
-                double x = coord(a[1], p.x), y = coord(a[2], p.y - p.eyeHeight), z = coord(a[3], p.z);
-                p.setPositionAndAngles(x, y + p.eyeHeight, z, p.yaw, p.pitch);
+                double x = coord(a[1], p.x), y = coord(a[2], p.y - p.eyeHeight) - (a[2].startsWith("~") || a[2].contains(".") ? 0 : 0.5), z = coord(a[3], p.z);
+                p.setPositionAndAngles(x, y, z, p.yaw, p.pitch); // it adds the eye height itself
                 p.velocityX = p.velocityY = p.velocityZ = 0.0;
                 p.fallDistance = 0.0F;
                 cheat(mc);
@@ -142,11 +165,23 @@ public final class Commands {
                             : Long.parseLong(v);
                     long now = mc.world.getTime();
                     mc.world.setTime(now - Math.floorMod(now, 24000L) + Math.floorMod(t, 24000L) + (Math.floorMod(t, 24000L) < Math.floorMod(now, 24000L) ? 24000 : 0));
+                    if (PitSandbox.lockedTime >= 0) PitSandbox.lockedTime = Math.floorMod(t, 24000L);
+                } else if (a.length >= 2 && (a[1].equalsIgnoreCase("lock") || a[1].equalsIgnoreCase("hold") || a[1].equalsIgnoreCase("freeze"))) {
+                    if (a.length >= 3) run(mc, "time", new String[]{"time", "set", a[2]});
+                    PitSandbox.lockedTime = Math.floorMod(mc.world.getTime(), 24000L);
+                    cheat(mc);
+                    EndPractice.chat(mc, "Time held at " + PitSandbox.lockedTime + ". /time unlock lets it run.");
+                    return;
+                } else if (a.length >= 2 && (a[1].equalsIgnoreCase("unlock") || a[1].equalsIgnoreCase("run") || a[1].equalsIgnoreCase("unfreeze"))) {
+                    PitSandbox.lockedTime = -1;
+                    EndPractice.chat(mc, "Time runs again.");
+                    return;
                 } else if (a.length >= 3 && a[1].equalsIgnoreCase("add")) {
                     mc.world.setTime(mc.world.getTime() + Long.parseLong(a[2]));
+                    if (PitSandbox.lockedTime >= 0) PitSandbox.lockedTime = Math.floorMod(mc.world.getTime(), 24000L);
                 } else {
                     long t = mc.world.getTime();
-                    EndPractice.chat(mc, "World time " + t + " (" + Math.floorMod(t, 24000L) + " of the day). /time set day|night|<ticks> or /time add <ticks>");
+                    EndPractice.chat(mc, "World time " + t + " (" + Math.floorMod(t, 24000L) + " of the day). /time set day|night|<ticks>, /time add <ticks>, /time lock [time] or /time unlock");
                     return;
                 }
                 cheat(mc);
@@ -213,6 +248,29 @@ public final class Commands {
             case "seed":
                 EndPractice.chat(mc, "Seed: " + mc.world.getSeed());
                 return;
+            case "keima":
+                if (!EyeTrainer.isActive() && !(a.length > 1 && (a[1].equalsIgnoreCase("reset") || a[1].equalsIgnoreCase("fixed")))) {
+                    EndPractice.chat(mc, "§c/keima only works in the eye throw trainer§r (/keima reset and /keima fixed work anywhere).");
+                    return;
+                }
+                if (a.length < 2) {
+                    EndPractice.chat(mc, "§c/keima <pixels>§r (or your distance guess, 100 or more), §c/keima calibrate§r (5 guided tries), §c/keima reset§r, §c/keima fixed <n>§r. Distance is about " + EyeTrainer.keimaConstant() + " / pixels.");
+                    return;
+                }
+                if (a[1].equalsIgnoreCase("calibrate")) {
+                    EyeTrainer.startCalibration(mc);
+                } else if (a[1].equalsIgnoreCase("reset")) {
+                    EyeTrainer.resetCalibration(mc);
+                } else if (a[1].equalsIgnoreCase("fixed")) {
+                    if (a.length > 2) {
+                        EndPractice.cfg.keimaFixed = Math.max(500, Math.min(20000, Integer.parseInt(a[2])));
+                        EndPractice.cfg.save();
+                    }
+                    EndPractice.chat(mc, "Fixed Keima constant: " + EndPractice.cfg.keimaFixed + ".");
+                } else {
+                    EyeTrainer.keimaAnswer(mc, Double.parseDouble(a[1]));
+                }
+                return;
             case "guess":
                 if (!EyeTrainer.isActive()) {
                     EndPractice.chat(mc, "§c/guess only works in the eye throw trainer.");
@@ -224,6 +282,131 @@ public final class Commands {
                 }
                 EyeTrainer.guess(mc, (int) Math.floor(coord(a[1], p.x)), (int) Math.floor(coord(a[a.length - 1], p.z)));
                 return;
+            case "summon": case "mob": {
+                if (a.length < 2 || a[1].equalsIgnoreCase("list")) {
+                    EndPractice.chat(mc, "§c/summon <mob> [count] [x y z]§r, at the block you're looking at. Mobs: " + PitSandbox.mobList());
+                    return;
+                }
+                String key = PitSandbox.mobKey(a[1]);
+                if (key == null) {
+                    EndPractice.chat(mc, "§cNo mob called " + a[1] + ".§r /summon list");
+                    return;
+                }
+                int count = a.length >= 3 ? Math.max(1, Math.min(100, Integer.parseInt(a[2]))) : 1;
+                double[] at = PitSandbox.summonSpot(mc);
+                if (a.length >= 6) at = new double[]{coord(a[3], p.x), coord(a[4], p.y - p.eyeHeight) - (a[4].contains(".") || a[4].startsWith("~") ? 0 : 0.5), coord(a[5], p.z)};
+                int n = PitSandbox.summon(mc, key, count, at[0], at[1], at[2]);
+                cheat(mc);
+                EndPractice.chat(mc, "Summoned " + n + " " + key + " at " + (int) Math.floor(at[0]) + " " + (int) Math.floor(at[1]) + " " + (int) Math.floor(at[2]) + ".");
+                return;
+            }
+            case "hud":
+                EndPractice.toggleHud(mc);
+                return;
+            case "clear": case "ci": {
+                for (int i = 0; i < p.inventory.items.length; i++) p.inventory.items[i] = null;
+                for (int i = 0; i < p.inventory.armor.length; i++) p.inventory.armor[i] = null;
+                EndPractice.chat(mc, "Inventory cleared.");
+                return;
+            }
+            case "ws": case "spawn": case "worldspawn": {
+                // world spawn, on top of whatever's there (your tower), like respawning
+                int x = mc.world.getData().getSpawnX(), z = mc.world.getData().getSpawnZ();
+                int y = mc.world.getHeight(x, z);
+                p.setPositionAndAngles(x + 0.5, y + p.eyeHeight + 0.01, z + 0.5, p.yaw, p.pitch);
+                p.velocityX = p.velocityY = p.velocityZ = 0.0;
+                p.fallDistance = 0.0F;
+                cheat(mc);
+                EndPractice.chat(mc, "Teleported to world spawn, " + x + " " + y + " " + z + ".");
+                return;
+            }
+            case "killall": case "butcher": {
+                String what = a.length >= 2 ? a[1].toLowerCase() : "all";
+                int n = PitSandbox.killAll(mc, what);
+                if (n < 0) {
+                    EndPractice.chat(mc, "§cNo mob called " + a[1] + ".§r /killall, /killall monsters or /killall <mob>");
+                    return;
+                }
+                cheat(mc);
+                EndPractice.chat(mc, "Removed " + n + " mob" + (n == 1 ? "" : "s") + ".");
+                return;
+            }
+            case "mobs": {
+                java.util.Map<String, Integer> counts = new java.util.TreeMap<>();
+                for (Object o : mc.world.entities) {
+                    if (!(o instanceof net.minecraft.entity.mob.MobEntity) || o instanceof PlayerEntity || ((net.minecraft.entity.Entity) o).removed) continue;
+                    counts.merge(String.valueOf(net.minecraft.entity.Entities.getKey((net.minecraft.entity.Entity) o)), 1, Integer::sum);
+                }
+                EndPractice.chat(mc, counts.isEmpty() ? "No mobs loaded." : "Loaded: " + counts.toString().replace("{", "").replace("}", "").replace("=", " "));
+                return;
+            }
+            case "test": {
+                if (a.length >= 2 && (a[1].equalsIgnoreCase("stop") || a[1].equalsIgnoreCase("end"))) {
+                    PitSandbox.endTest(mc, "stopped");
+                    return;
+                }
+                if (a.length < 2 || a.length == 2 && a[1].matches("\\d+")) {
+                    if (PitDesigns.current != null) {
+                        PitSandbox.startTest(mc, PitDesigns.current, a.length == 2 ? Long.parseLong(a[1]) : 0);
+                        return;
+                    }
+                    EndPractice.chat(mc, "§c/test <name> [minutes]§r times a pit design, /test stop ends it, /tests compares them.");
+                    return;
+                }
+                long minutes = 0;
+                int nameEnd = a.length;
+                if (a.length >= 3 && a[a.length - 1].matches("\\d+")) {
+                    minutes = Long.parseLong(a[a.length - 1]);
+                    nameEnd = a.length - 1;
+                }
+                StringBuilder name = new StringBuilder();
+                for (int i = 1; i < nameEnd; i++) name.append(i > 1 ? " " : "").append(a[i]);
+                PitSandbox.startTest(mc, name.toString(), minutes);
+                return;
+            }
+            case "pit": case "pits":
+                if (!PitSandbox.tracking(mc)) {
+                    EndPractice.chat(mc, "§c/pit works in the pit sandbox or a normal world, not in the practice modes.");
+                    return;
+                }
+                PitDesigns.command(mc, a);
+                return;
+            case "tests": case "designs":
+                // the stats page opens once chat has closed
+                PitSandbox.openTests = true;
+                return;
+            case "sandbox": case "overlay": case "overlays": {
+                Config c = EndPractice.cfg;
+                String what = a.length >= 2 ? a[1].toLowerCase() : "";
+                switch (what) {
+                    case "paths": case "path": c.sbPaths = !c.sbPaths; break;
+                    case "teleports": case "tp": c.sbTeleports = !c.sbTeleports; break;
+                    case "spawns": c.sbSpawns = !c.sbSpawns; break;
+                    case "spawnable": case "light": c.sbSpawnable = !c.sbSpawnable; break;
+                    case "rings": case "ring": c.sbRings = !c.sbRings; break;
+                    case "start": case "new": EndPractice.queueSandbox(); return;
+                    case "save": case "saveworld":
+                        if (a.length < 3) {
+                            EndPractice.chat(mc, "§c/sandbox save <name>§r copies this sandbox world into your saves to open again");
+                            return;
+                        }
+                        PitSandbox.saveWorld(mc, String.join(" ", java.util.Arrays.copyOfRange(a, 2, a.length)));
+                        return;
+                    case "on": c.sbInWorlds = true; break;
+                    case "off": c.sbInWorlds = false; break;
+                    default:
+                        EndPractice.chat(mc, "Overlays: /sandbox paths " + onOff(c.sbPaths) + ", teleports " + onOff(c.sbTeleports) + ", spawns " + onOff(c.sbSpawns)
+                                + ", spawnable " + onOff(c.sbSpawnable) + ", rings " + onOff(c.sbRings) + ". In normal worlds " + onOff(c.sbInWorlds)
+                                + " (/sandbox on|off). /sandbox new for a new sandbox world.");
+                        return;
+                }
+                if (!PitSandbox.isActive() && !what.equals("off")) c.sbInWorlds = true;
+                c.save();
+                if (!PitSandbox.isActive()) EndPractice.chat(mc, "Overlays in normal worlds " + onOff(c.sbInWorlds) + " (/sandbox on|off).");
+                EndPractice.chat(mc, "Paths " + onOff(c.sbPaths) + ", teleports " + onOff(c.sbTeleports) + ", spawns " + onOff(c.sbSpawns)
+                        + ", spawnable " + onOff(c.sbSpawnable) + ", rings " + onOff(c.sbRings));
+                return;
+            }
             default:
                 EndPractice.chat(mc, "§cUnknown command /" + cmd + ".§r /help lists them.");
         }
@@ -243,11 +426,19 @@ public final class Commands {
         return s.contains(".") ? v : v + 0.5;
     }
 
-    private static String modeName(Minecraft mc) {
+    private static String onOff(boolean b) {
+        return b ? "§aon§r" : "§7off§r";
+    }
+
+    static String modeName(Minecraft mc) {
         return spectating(mc) ? "spectator" : mc.interactionManager.creative ? "creative" : "survival";
     }
 
     static void gamemode(Minecraft mc, String m) {
+        gamemode(mc, m, true);
+    }
+
+    static void gamemode(Minecraft mc, String m, boolean say) {
         PlayerEntity p = mc.player;
         String name;
         if (m.equals("s") || m.equals("0") || m.equals("survival")) {
@@ -271,6 +462,7 @@ public final class Commands {
             return;
         }
         mc.interactionManager.initWorld(mc.world);
+        if (!say) return;
         cheat(mc);
         EndPractice.chat(mc, "Game mode set to " + name + ".");
     }
@@ -284,8 +476,8 @@ public final class Commands {
         }
     }
 
-    private static void cheat(Minecraft mc) {
-        if (!EndPractice.inPracticeWorld() || cheated) return;
+    static void cheat(Minecraft mc) {
+        if (!EndPractice.inPracticeWorld() || cheated || PitSandbox.isActive()) return;
         cheated = true;
         EndPractice.chat(mc, "§7Commands used, so this attempt's times and stats won't be saved.§r");
     }

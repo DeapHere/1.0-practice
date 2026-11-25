@@ -15,6 +15,7 @@ public abstract class EndermanMixin {
         int n = Endgame.averagePearls(bound);
         if (n < 0) n = random.nextInt(bound);
         Endgame.onEndermanKilled(n);
+        endpractice.PitSandbox.onEndermanKilled((EndermanEntity) (Object) this, n);
         return n;
     }
 }

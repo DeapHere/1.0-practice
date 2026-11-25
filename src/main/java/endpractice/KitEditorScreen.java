@@ -19,8 +19,8 @@ import org.lwjgl.opengl.GL11;
  */
 public final class KitEditorScreen extends Screen {
     private static final int DONE = 0, CANCEL = 1, RESET = 2, MINUS = 3, PLUS = 4, MAX = 5, CLEAR = 6, TAB = 10;
-    private static final String[] TABS = {"End fight", "Tower", "Stronghold", "Blaze", "Eye throw"};
-    private static final int SLOTS = 40, S = 18, COLS = 11, ROWS = 7;
+    private static final String[] TABS = {"End fight", "Tower", "Stronghold", "Blaze", "Eye throw", "Overworld", "Doubles"};
+    private static final int SLOTS = 40, S = 18, ROWS = 7;
     /** Blocks that aren't items you can hold (liquids, fire, portals, door and bed halves and the like). */
     private static final int[] SKIP = {0, 8, 9, 10, 11, 26, 34, 36, 51, 55, 59, 62, 63, 64, 68, 71, 74, 75, 83, 90, 92, 93, 94,
             104, 105, 115, 117, 118, 119, 124};
@@ -36,7 +36,7 @@ public final class KitEditorScreen extends Screen {
     private String search = "";
     private int scroll;
     private final List<Integer> palette = new ArrayList<>();
-    private int x0, y0, px;
+    private int x0, y0, px, cols = 11;
 
     public KitEditorScreen(Screen parent) {
         this.parent = parent;
@@ -50,7 +50,9 @@ public final class KitEditorScreen extends Screen {
             case 1: return c.towerKit;
             case 2: return c.strongholdKit;
             case 3: return c.blazeKit;
-            default: return c.eyeKit;
+            case 4: return c.eyeKit;
+            case 5: return c.overworldKit;
+            default: return c.doubleBedKit;
         }
     }
 
@@ -60,7 +62,9 @@ public final class KitEditorScreen extends Screen {
             case 1: c.towerKit = v; break;
             case 2: c.strongholdKit = v; break;
             case 3: c.blazeKit = v; break;
-            default: c.eyeKit = v; break;
+            case 4: c.eyeKit = v; break;
+            case 5: c.overworldKit = v; break;
+            default: c.doubleBedKit = v; break;
         }
     }
 
@@ -106,7 +110,7 @@ public final class KitEditorScreen extends Screen {
     }
 
     private int maxScroll() {
-        return Math.max(0, (palette.size() + COLS - 1) / COLS - ROWS);
+        return Math.max(0, (palette.size() + cols - 1) / cols - ROWS);
     }
 
     private static String name(ItemStack s) {
@@ -122,14 +126,30 @@ public final class KitEditorScreen extends Screen {
     public void init() {
         this.buttons.clear();
         int cx = this.width / 2;
-        x0 = cx - 206;
-        y0 = 46;
-        px = x0 + 196;
-        for (int i = 0; i < TABS.length; i++) {
-            ButtonWidget b = new ButtonWidget(TAB + i, cx - 154 + i * 62, 16, 60, 20, TABS[i]);
-            b.active = i != tab;
-            this.buttons.add(b);
+        // tabs as wide as their names, centred, wrapping onto a second row on narrow screens
+        int[] w = new int[TABS.length];
+        for (int i = 0; i < TABS.length; i++) w[i] = this.textRenderer.getWidth(TABS[i]) + 12;
+        int maxRow = this.width - 8, start = 0, ty = 16;
+        while (start < TABS.length) {
+            int end = start, total = w[start];
+            while (end + 1 < TABS.length && total + 2 + w[end + 1] <= maxRow) total += 2 + w[++end];
+            int tx = cx - total / 2;
+            for (int i = start; i <= end; i++) {
+                ButtonWidget b = new ButtonWidget(TAB + i, tx, ty, w[i], 20, TABS[i]);
+                tx += w[i] + 2;
+                b.active = i != tab;
+                this.buttons.add(b);
+            }
+            start = end + 1;
+            ty += 22;
         }
+        // item list as wide as fits (11 columns on a normal screen)
+        cols = Math.max(4, Math.min(11, (this.width - 8 - 196) / S));
+        int width = 196 + cols * S;
+        x0 = cx - width / 2;
+        y0 = ty + 10;
+        px = x0 + 196;
+        scroll = Math.max(0, Math.min(scroll, maxScroll()));
         int by = y0 + 4 * S + 12;
         this.buttons.add(new ButtonWidget(MINUS, x0 + 22, by, 30, 20, "-1"));
         this.buttons.add(new ButtonWidget(PLUS, x0 + 56, by, 30, 20, "+1"));
@@ -141,10 +161,16 @@ public final class KitEditorScreen extends Screen {
         updateButtons();
     }
 
+    /** What the count buttons change: the stack you're holding, or else the selected slot. */
+    private ItemStack target() {
+        if (cursor != null) return cursor;
+        return selected >= 0 ? kits[tab][selected] : null;
+    }
+
     private void updateButtons() {
         for (Object o : this.buttons) {
             ButtonWidget b = (ButtonWidget) o;
-            if (b.id == MINUS || b.id == PLUS || b.id == MAX || b.id == CLEAR) b.active = selected >= 0 && kits[tab][selected] != null;
+            if (b.id == MINUS || b.id == PLUS || b.id == MAX || b.id == CLEAR) b.active = target() != null;
             if (b.id >= TAB) b.active = b.id - TAB != tab;
         }
     }
@@ -152,7 +178,7 @@ public final class KitEditorScreen extends Screen {
     @Override
     protected void buttonClicked(ButtonWidget b) {
         if (!b.active) return;
-        ItemStack s = selected >= 0 ? kits[tab][selected] : null;
+        ItemStack s = target();
         if (b.id >= TAB) {
             tab = b.id - TAB;
             selected = -1;
@@ -163,7 +189,8 @@ public final class KitEditorScreen extends Screen {
         } else if (b.id == MAX && s != null) {
             s.size = Math.max(1, s.getMaxSize());
         } else if (b.id == CLEAR && s != null) {
-            kits[tab][selected] = null;
+            if (s == cursor) cursor = null;
+            else kits[tab][selected] = null;
         } else if (b.id == RESET) {
             kits[tab] = parse(get(defaults, tab));
             selected = -1;
@@ -197,8 +224,8 @@ public final class KitEditorScreen extends Screen {
     }
 
     private int paletteAt(int mx, int my) {
-        if (mx < px || my < y0 || mx >= px + COLS * S || my >= y0 + ROWS * S) return -1;
-        int i = (scroll + (my - y0) / S) * COLS + (mx - px) / S;
+        if (mx < px || my < y0 || mx >= px + cols * S || my >= y0 + ROWS * S) return -1;
+        int i = (scroll + (my - y0) / S) * cols + (mx - px) / S;
         return i < palette.size() ? palette.get(i) : -1;
     }
 
@@ -206,27 +233,99 @@ public final class KitEditorScreen extends Screen {
     protected void mouseClicked(int mx, int my, int button) {
         int id = paletteAt(mx, my);
         if (id > 0) {
-            ItemStack s = new ItemStack(id, 1, 0);
-            if (button == 0) s.size = Math.max(1, s.getMaxSize());
-            cursor = s;
-            return;
-        }
-        int slot = slotAt(mx, my);
-        if (slot >= 0) {
-            if (button == 1) {
-                kits[tab][slot] = null;
-                if (selected == slot) selected = -1;
-            } else if (cursor != null) {
-                kits[tab][slot] = cursor.copy();
-                selected = slot;
+            if (button == 0 && shift()) {
+                // shift click: straight into the first empty slot, hotbar first
+                ItemStack s = new ItemStack(id, 1, 0);
+                s.size = Math.max(1, s.getMaxSize());
+                for (int i = 0; i < 36; i++) {
+                    if (kits[tab][i] == null) {
+                        kits[tab][i] = s;
+                        selected = i;
+                        break;
+                    }
+                }
+            } else if (button == 0) {
+                // each left click adds one more of that item to the stack you're holding
+                if (cursor != null && cursor.id == id && cursor.getMetadata() == 0) cursor.size = Math.min(Math.max(1, cursor.getMaxSize()), cursor.size + 1);
+                else cursor = new ItemStack(id, 1, 0);
             } else {
-                selected = slot;
+                // right click: a full stack
+                ItemStack s = new ItemStack(id, 1, 0);
+                s.size = Math.max(1, s.getMaxSize());
+                cursor = s;
             }
             updateButtons();
             return;
         }
-        if (button == 1) cursor = null;
+        int slot = slotAt(mx, my);
+        if (slot >= 0) {
+            ItemStack in = kits[tab][slot];
+            if (button == 0) {
+                if (cursor == null) {
+                    // pick it up
+                    cursor = in;
+                    kits[tab][slot] = null;
+                    selected = -1;
+                } else if (in == null) {
+                    kits[tab][slot] = cursor;
+                    cursor = null;
+                    selected = slot;
+                } else if (in.id == cursor.id && in.getMetadata() == cursor.getMetadata()) {
+                    int max = Math.max(1, in.getMaxSize()), move = Math.min(cursor.size, max - in.size);
+                    if (move > 0) {
+                        in.size += move;
+                        cursor.size -= move;
+                        if (cursor.size <= 0) cursor = null;
+                    } else {
+                        kits[tab][slot] = cursor;
+                        cursor = in;
+                    }
+                    selected = slot;
+                } else {
+                    // swap
+                    kits[tab][slot] = cursor;
+                    cursor = in;
+                    selected = slot;
+                }
+            } else {
+                if (cursor != null) {
+                    // right click while holding: put down one
+                    if (in == null) {
+                        kits[tab][slot] = new ItemStack(cursor.id, 1, cursor.getMetadata());
+                        cursor.size--;
+                    } else if (in.id == cursor.id && in.getMetadata() == cursor.getMetadata() && in.size < Math.max(1, in.getMaxSize())) {
+                        in.size++;
+                        cursor.size--;
+                    }
+                    if (cursor.size <= 0) cursor = null;
+                    selected = slot;
+                } else {
+                    // right click with nothing held: empty the slot
+                    kits[tab][slot] = null;
+                    if (selected == slot) selected = -1;
+                }
+            }
+            updateButtons();
+            return;
+        }
+        if (cursor != null && !overButton(mx, my)) {
+            // clicking outside the slots throws away what you're holding
+            cursor = null;
+            updateButtons();
+            return;
+        }
         super.mouseClicked(mx, my, button);
+    }
+
+    private static boolean shift() {
+        return Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) || Keyboard.isKeyDown(Keyboard.KEY_RSHIFT);
+    }
+
+    private boolean overButton(int mx, int my) {
+        for (Object o : this.buttons) {
+            if (((ButtonWidget) o).mouseClicked(this.minecraft, mx, my)) return true;
+        }
+        return false;
     }
 
     @Override
@@ -239,8 +338,10 @@ public final class KitEditorScreen extends Screen {
     @Override
     protected void keyPressed(char chr, int key) {
         if (key == Keyboard.KEY_ESCAPE) {
-            if (cursor != null) cursor = null;
-            else this.minecraft.openScreen(parent);
+            if (cursor != null) {
+                cursor = null;
+                updateButtons();
+            } else this.minecraft.openScreen(parent);
             return;
         }
         if (key == Keyboard.KEY_BACK) {
@@ -264,8 +365,8 @@ public final class KitEditorScreen extends Screen {
             this.fill(p[0], p[1], p[0] + S - 1, p[1] + S - 1, i == selected ? 0xC0A060E0 : 0x80000000);
         }
         for (int r = 0; r < ROWS; r++) {
-            for (int col = 0; col < COLS; col++) {
-                int i = (scroll + r) * COLS + col;
+            for (int col = 0; col < cols; col++) {
+                int i = (scroll + r) * cols + col;
                 if (i >= palette.size()) break;
                 int x = px + col * S, y = y0 + r * S;
                 this.fill(x, y, x + S - 1, y + S - 1, 0x60000000);
@@ -285,8 +386,8 @@ public final class KitEditorScreen extends Screen {
             drawItem(s, p[0] + 1, p[1] + 1, true);
         }
         for (int r = 0; r < ROWS; r++) {
-            for (int col = 0; col < COLS; col++) {
-                int i = (scroll + r) * COLS + col;
+            for (int col = 0; col < cols; col++) {
+                int i = (scroll + r) * cols + col;
                 if (i >= palette.size()) break;
                 drawItem(new ItemStack(palette.get(i), 1, 0), px + col * S + 1, y0 + r * S + 1, false);
             }
@@ -300,10 +401,11 @@ public final class KitEditorScreen extends Screen {
 
         int infoY = y0 + 4 * S + 38;
         String info;
-        if (cursor != null) info = "Placing §e" + name(cursor) + " x" + cursor.size + "§r: click slots. Right click or Esc to stop";
+        if (cursor != null) info = "Holding §e" + name(cursor) + " x" + cursor.size + "§r. Click the item again for +1, click a slot to put it down (right click: 1). Esc drops it";
         else if (selected >= 0 && kits[tab][selected] != null) info = "Slot: §e" + name(kits[tab][selected]) + " x" + kits[tab][selected].size + "§r";
-        else info = "§7Pick an item on the right (right click: just 1), then click slots. Right click a slot to empty it§r";
+        else info = "§7Click an item to pick it up, each click +1 (right click: a stack, shift: straight in). Click slots to pick up and put down, right click to empty§r";
         for (String line : wrap(info, 190)) {
+            if (infoY + 9 > this.height - 28) break;
             this.drawString(this.textRenderer, line, x0, infoY, 0xFFFFFF);
             infoY += 10;
         }

@@ -16,5 +16,7 @@ public abstract class PickupMixin {
     @Inject(method = "onPlayerCollision", at = @At("HEAD"), cancellable = true)
     private void endpractice$noPickup(PlayerEntity player, CallbackInfo ci) {
         if (Commands.spectating()) ci.cancel();
+        // double bed practice: mined end stone and anything else that isn't in the kit stays out of the inventory
+        if ((Object) this instanceof ItemEntity && endpractice.DoubleBed.keepOut(((ItemEntity) (Object) this).item)) ci.cancel();
     }
 }

@@ -424,7 +424,8 @@ public final class PitPlanner {
     /** The line on the ground and markers over the tower spot and the pit, from WorldRenderer.renderEntities. */
     public static void render(Minecraft mc, float tickDelta) {
         Plan p = best;
-        if (p == null || mc.world != world || mc.player == null || !Endgame.showPitPlan()) return;
+        if (endpractice.compat.RankedCompat.busy()) return;
+        if (p == null || mc.world != world || mc.player == null || !(Endgame.showPitPlan() || PitSandbox.tracking(mc) && EndPractice.cfg.pitPlanner)) return;
         double cx = mc.player.prevX + (mc.player.x - mc.player.prevX) * tickDelta;
         double cy = mc.player.prevY + (mc.player.y - mc.player.prevY) * tickDelta;
         double cz = mc.player.prevZ + (mc.player.z - mc.player.prevZ) * tickDelta;

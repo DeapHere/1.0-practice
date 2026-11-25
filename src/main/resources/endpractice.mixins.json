@@ -11,9 +11,13 @@
     "ClientPlayerMixin",
     "EnderEyeMixin",
     "EntityInWallMixin",
+    "EnderDragonAccessor",
+    "CreativeHotbarMixin",
+    "DimensionTimeMixin",
     "EnderDragonMixin",
     "EndermanMixin",
     "EndermanRendererMixin",
+    "EndermanTeleportMixin",
     "ExplosionMixin",
     "GameGuiMixin",
     "IntCacheAccessor",
@@ -22,12 +26,18 @@
     "MobDespawnMixin",
     "MobEntityAccessor",
     "NaturalSpawnerMixin",
+    "PathAccessor",
+    "PathMobAccessor",
     "PickupMixin",
     "StructureFeatureAccessor",
     "StructurePieceInvoker",
     "TitleScreenMixin",
     "WorldRendererMixin",
-    "WorldDataAccessor"
+    "WorldDataAccessor",
+    "FlatDesertMixin",
+    "FlatBiomeMixin",
+    "FlatSpawnMixin",
+    "EyeTargetMixin"
   ],
   "injectors": {
     "defaultRequire": 1

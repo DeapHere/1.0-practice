@@ -190,7 +190,7 @@ public final class CrystalTrainer {
     }
 
     /** The end stone surface nearest 0,0. */
-    private static int[] middle(Minecraft mc) {
+    static int[] middle(Minecraft mc) {
         for (int r = 0; r <= 16; r++) {
             for (int x = -r; x <= r; x++) {
                 for (int z = -r; z <= r; z++) {

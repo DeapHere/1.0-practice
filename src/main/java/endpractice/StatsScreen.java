@@ -40,10 +40,12 @@ public final class StatsScreen extends Screen {
             long crystals = CrystalTrainer.bestTime();
             out.add("§dCrystal aim trainer§r   " + (crystals >= 0 ? "§e" + EndPractice.time(crystals) + "§r" : "§7none§r"));
             out.add("§dRandom crystals§r   best streak §e" + CrystalTrainer.bestStreak() + "§r");
+            out.add(DoubleBed.statsLine());
             out.add("");
             out.addAll(BlazePractice.pbLines());
             out.add("");
             out.addAll(EyeTrainer.pbLines());
+            out.addAll(Overworld.pbLines());
             return out;
         });
     }

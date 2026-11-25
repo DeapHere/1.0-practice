@@ -29,10 +29,14 @@ public final class BedReport {
 
     private static final double[][] head = new double[HISTORY][3];
     private static final float[] yaw = new float[HISTORY];
+    private static final boolean[] restricted = new boolean[HISTORY];
+    private static final double[] speed = new double[HISTORY];
     private static long recorded = 0; // number of ticks recorded
 
-    // the bed being reported on
-    private static Pending pending;
+    // the beds waiting to be reported on, oldest first
+    private static final java.util.ArrayList<Pending> pendings = new java.util.ArrayList<>();
+    /** The last bed reported, for pairs. */
+    private static Pending prev;
     private static String lastShort;
 
     private static final class Pending {
@@ -46,6 +50,8 @@ public final class BedReport {
         String bestPart;
         int bestPartDamage;
         boolean done;
+        boolean inGround;
+        double speed, headUp;
     }
 
     private BedReport() {
@@ -53,7 +59,9 @@ public final class BedReport {
 
     static void clear() {
         recorded = 0;
-        pending = null;
+        pendings.clear();
+        prev = null;
+        DoubleBed.clear();
         lastShort = null;
     }
 
@@ -69,6 +77,9 @@ public final class BedReport {
         head[i][1] = dragon.head.y;
         head[i][2] = dragon.head.z;
         yaw[i] = dragon.yaw;
+        restricted[i] = dragon.restrictMovement;
+        double vx = dragon.x - dragon.prevX, vy = dragon.y - dragon.prevY, vz = dragon.z - dragon.prevZ;
+        speed[i] = Math.sqrt(vx * vx + vy * vy + vz * vz);
         recorded++;
     }
 
@@ -91,6 +102,10 @@ public final class BedReport {
         p.invulnerable = dragon.invulnerableTimer > dragon.invulnerableTicks / 2.0F;
         p.invulnerableFor = dragon.invulnerableTimer - dragon.invulnerableTicks / 2;
         p.prevDamage = acc.endpractice$getPrevDamageTaken();
+        for (long t = Math.max(0, recorded - 5); t < recorded; t++) p.inGround |= restricted[(int) (t % HISTORY)];
+        p.speed = speed[(int) ((recorded - 1) % HISTORY)];
+        p.headUp = dragon.head.y - (mc.player.y - mc.player.eyeHeight);
+        DoubleBed.onHit(mc, p.invulnerable);
 
         // what each part would take from this explosion, worked out the way Explosion does it
         Vec3d center = Vec3d.fromPool(x, y, z);
@@ -107,31 +122,37 @@ public final class BedReport {
                 p.bestPart = part == dragon.head ? "head" : part.name;
             }
         }
-        pending = p;
+        pendings.add(p);
     }
 
     /** Explosion.damageEntities, after. */
     public static void afterExplosion(World world, float power) {
-        Pending p = pending;
+        Pending p = pendings.isEmpty() ? null : pendings.get(pendings.size() - 1);
         if (p == null || p.done || power != 5.0F) return;
         EnderDragonEntity dragon = EndPractice.dragon(EndPractice.mc);
         p.healthAfter = dragon == null ? p.healthBefore : Math.max(0, dragon.getHealth());
         p.done = true;
+        DoubleBed.dealt(p.healthBefore - p.healthAfter);
         EndPractice.onBed(p.healthBefore - p.healthAfter);
     }
 
     /** Every client tick in the End: reports a bed once the ticks after it have been recorded. */
     static void tick(Minecraft mc) {
-        Pending p = pending;
-        if (p == null || !p.done) return;
-        boolean dragonDead = p.healthAfter <= 0;
-        if (recorded - 1 < p.index + WINDOW && !dragonDead) return;
-        pending = null;
-        report(mc, p, dragonDead);
+        while (!pendings.isEmpty()) {
+            Pending p = pendings.get(0);
+            if (!p.done) return;
+            boolean dragonDead = p.healthAfter <= 0;
+            if (recorded - 1 < p.index + WINDOW && !dragonDead) return;
+            pendings.remove(0);
+            report(mc, p, dragonDead);
+        }
     }
 
     private static void report(Minecraft mc, Pending p, boolean dragonDead) {
         int dealt = p.healthBefore - p.healthAfter;
+        int gap = prev == null ? Integer.MAX_VALUE : (int) (p.index - prev.index);
+        int prevDealt = prev == null ? 0 : prev.healthBefore - prev.healthAfter;
+        boolean inPair = gap <= DoubleBed.PAIR_TICKS && prevDealt > 0 && (dealt > 0 || p.invulnerable);
         int at = (int) (p.index % HISTORY);
         double[] h = head[at];
         double dist = dist(h, p);
@@ -159,7 +180,7 @@ public final class BedReport {
         }
         EndPractice.chat(mc, sb.toString());
 
-        if (p.invulnerable) {
+        if (p.invulnerable && !inPair) {
             EndPractice.chat(mc, "Dragon was invulnerable for " + f2(p.invulnerableFor / 20.0) + " s more: only damage over "
                     + p.prevDamage + " counted");
         }
@@ -191,6 +212,12 @@ public final class BedReport {
             if (off > 0 && dealt > 0) s += ", estimate";
         }
         EndPractice.chat(mc, s);
+        if (inPair) {
+            DoubleBed.pair(mc, gap, prevDealt, Math.max(0, dealt), dragonDead ? Math.max(0, dealt) : p.bestPartDamage, p.invulnerable, p.prevDamage);
+        } else if (dealt > 0 && !p.invulnerable && !dragonDead) {
+            EndPractice.chat(mc, DoubleBed.chargeLine(p.inGround, p.speed, p.headUp));
+        }
+        if (dealt > 0 || p.invulnerable) prev = p;
         lastShort = "Last bed " + (dragonDead ? p.bestPartDamage : Math.max(0, dealt)) + (off == 0 ? ", perfect tick" : ", " + when);
     }
 
